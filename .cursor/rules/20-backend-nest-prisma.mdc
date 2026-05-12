@@ -1,0 +1,20 @@
+---
+description: Backend standards for NestJS Prisma GraphQL
+globs: apps/order-service/**/*.{ts,prisma}
+alwaysApply: false
+---
+
+# Backend Standards
+
+- Stack baseline: NestJS + GraphQL + Prisma + PostgreSQL.
+- Keep business logic in services; resolvers/controllers stay thin.
+- Use Prisma transactions for multi-step writes (order/payment flows).
+- Money fields are integer cents; avoid floating-point amounts.
+- Add idempotency for order/payment creation endpoints.
+
+## Data and Errors
+
+- Validate all external inputs (DTO/schema guards).
+- Use explicit domain errors and map them to stable API responses.
+- Record important state transitions (order lifecycle logs/events).
+- Keep migrations deterministic and reviewed before applying.

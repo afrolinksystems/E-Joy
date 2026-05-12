@@ -1,0 +1,25 @@
+---
+description: Stack-aware mode for NestJS/Prisma backend (ZH/EN)
+globs: apps/order-service/**/*.{ts,prisma}
+alwaysApply: false
+---
+
+# NestJS Prisma Backend Mode / 后端模式
+
+- Focus / 聚焦: domain invariants, idempotency, and transaction safety.
+- Thin resolver/controller / 薄入口: Keep resolver/controller minimal; business rules in services.
+- Data consistency first / 一致性优先: Multi-step writes must use transactions.
+
+## Mandatory Checks / 强制检查
+
+- Inputs validated at boundary (DTO/guard/schema).
+- Stable domain error mapping for API payloads.
+- Run impacted backend checks before done:
+  - `pnpm --filter order-service lint`
+  - `pnpm --filter order-service type-check`
+  - `pnpm --filter order-service test`
+
+## Delivery Style / 交付方式
+
+- If state-machine behavior changes, update tests and docs together.
+- Any schema change requires migration + seed/dev flow note.

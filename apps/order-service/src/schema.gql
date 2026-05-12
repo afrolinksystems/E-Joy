@@ -1,0 +1,961 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AcceptDeliveryOrderInput {
+  orderId: ID!
+}
+
+input AcceptServiceTicketInput {
+  ticketId: String!
+}
+
+input AddressInput {
+  detailAddress: String!
+  latitude: Float
+  longitude: Float
+  phone: String!
+  receiverName: String!
+}
+
+type AdminDashboardModel {
+  activeRestaurants: Int!
+  openServiceTickets: Int!
+  orderTrend: [Int!]!
+  paidOrders: Int!
+  paymentFailedOrders: Int!
+  totalOrders: Int!
+  totalRevenueCent: Int!
+  totalUsers: Int!
+}
+
+type AlertStatusModel {
+  alertChainVerified: Boolean!
+  errorRateAlert: Boolean!
+  slowRateAlert: Boolean!
+  traceCoverageAlert: Boolean!
+}
+
+enum ApplicationStatusModel {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+input ApplyCouponInput {
+  couponCode: String!
+  shopId: ID!
+  subtotalAmount: Int!
+}
+
+type AuthPayloadModel {
+  accessToken: String!
+  role: String!
+}
+
+type BannerModel {
+  createdAt: String!
+  id: ID!
+  imageUrl: String!
+  linkUrl: String
+  status: BannerStatusModel!
+  title: String!
+}
+
+enum BannerStatusInput {
+  ACTIVE
+  DISABLED
+  DRAFT
+}
+
+enum BannerStatusModel {
+  ACTIVE
+  DISABLED
+  DRAFT
+}
+
+type BusinessReportModel {
+  acceptedTickets: Int!
+  avgResponseSeconds: Int!
+  gmvCent: Int!
+  openTickets: Int!
+  orderCount: Int!
+  resolvedTickets: Int!
+}
+
+type DashboardMetrics {
+  avgPrepMinutes: Float!
+  todayRevenue: Float!
+  topDishes: [TopDish!]!
+}
+
+type TopDish {
+  count: Int!
+  name: String!
+}
+
+input CallWaiterInput {
+  reason: String!
+  shopId: String!
+  tableId: String!
+}
+
+input CancelOrderInput {
+  orderId: ID!
+  reason: String!
+}
+
+input ConfirmPaymentCallbackInput {
+  callbackStatus: String!
+  orderId: ID!
+  providerTxnId: String!
+  rawPayload: String!
+  signature: String!
+}
+
+type CouponModel {
+  code: String!
+  discountValue: Int!
+}
+
+type CouponPreviewModel {
+  couponCode: String!
+  discountAmount: Int!
+  finalAmount: Int!
+}
+
+type CouponPreviewPayload {
+  error: OrderError
+  ok: Boolean!
+  preview: CouponPreviewModel
+}
+
+input CreateAddressInput {
+  detailAddress: String!
+  isDefault: Boolean
+  latitude: Float
+  longitude: Float
+  phone: String!
+  receiverName: String!
+}
+
+input CreateBannerInput {
+  imageUrl: String!
+  linkUrl: String
+  status: BannerStatusInput! = ACTIVE
+  title: String!
+}
+
+input CreateOrderInput {
+  addressId: ID
+  couponCode: String
+  deliveryType: DeliveryType! = DINE_IN
+  idempotencyKey: String!
+  items: [CreateOrderItemInput!]!
+  note: String
+  paymentMethod: PaymentMethod!
+  pickupTime: String
+  shopId: ID!
+  tableId: ID
+  tableNumber: String
+}
+
+input CreateOrderItemInput {
+  amount: Int!
+  productId: ID!
+  remark: String
+}
+
+input CreatePlatformCouponInput {
+  code: String!
+  discountValue: Float!
+  minOrderAmount: Float
+  ruleType: PlatformCouponRuleTypeInput! = NEW_USER
+  status: PlatformCouponStatusInput! = ACTIVE
+  targetProductIds: [String!]! = []
+  targetShopIds: [String!]! = []
+  usageLimit: Float
+  validFrom: String!
+  validUntil: String!
+}
+
+input CreatePrinterInput {
+  categoryFilter: [String!]! = []
+  enabled: Boolean! = true
+  ipAddress: String
+  name: String!
+  paperSize: PaperSizeInput! = THERMAL_80MM
+  port: Float
+  printerType: PrinterTypeInput! = ETHERNET
+}
+
+input CreateProductInput {
+  active: Boolean! = true
+  category: String!
+  imageUrl: String
+  name: String!
+  unitPrice: Int!
+}
+
+input CreateShopApplicationInput {
+  businessLicense: String!
+  contactName: String!
+  contactPhone: String!
+  shopName: String!
+}
+
+input CreateStaffAccountInput {
+  name: String!
+  password: String!
+  phone: String!
+  role: StaffRoleInput! = WAITER
+}
+
+input CreateStaffInput {
+  name: String!
+  phone: String!
+  role: StaffRoleInput! = WAITER
+}
+
+enum DeliveryAcceptMode {
+  AUTO
+  MANUAL
+}
+
+type DeliveryCheckResultModel {
+  deliverable: Boolean!
+  estimatedFee: Int!
+  reason: String
+}
+
+input DeliveryConfigInput {
+  deliveryAcceptMode: DeliveryAcceptMode
+  deliveryEnabled: Boolean
+  deliveryFeeType: DeliveryFeeType
+  deliveryOpenTime: String
+  deliveryRadius: Float
+  dineInEnabled: Boolean
+  dineInOpenTime: String
+  fixedFee: Int
+  freeDeliveryThreshold: Int
+  pickupEnabled: Boolean
+  pickupOpenTime: String
+}
+
+enum DeliveryFeeType {
+  DISTANCE_BASED
+  FIXED
+}
+
+input DeliveryOrderFilterInput {
+  page: Int
+  pageSize: Int
+  state: String
+}
+
+enum DeliveryType {
+  DELIVERY
+  DINE_IN
+  PICKUP
+}
+
+type DependencyHealthModel {
+  db: String!
+  kafka: String!
+  redis: String!
+}
+
+type ExportPayloadModel {
+  content: String!
+  fileName: String!
+}
+
+input InitiatePaymentInput {
+  channel: PaymentChannel!
+  orderId: ID!
+}
+
+type ManagedShopModel {
+  id: ID!
+  name: String!
+  status: ManagedShopStatusModel!
+  updatedAt: String!
+  updatedBy: String
+}
+
+enum ManagedShopStatusModel {
+  OFFLINE
+  ONLINE
+}
+
+input MarkDeliveryOrderReadyInput {
+  orderId: ID!
+}
+
+input MarkStaffNotificationReadInput {
+  notificationId: String!
+}
+
+type MerchantDispatchOrder {
+  acceptedAt: String
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  items: [MerchantDispatchOrderLine!]!
+  orderNo: String!
+  orderState: OrderState!
+  shopName: String!
+  status: OrderStatus!
+  tableName: String
+  totalAmount: Int!
+}
+
+type MerchantDispatchOrderLine {
+  imageUrl: String
+  productName: String!
+  quantity: Int!
+}
+
+type Mutation {
+  acceptDeliveryOrder(input: AcceptDeliveryOrderInput!): OrderPayload!
+  acceptServiceTicket(input: AcceptServiceTicketInput!): ServiceTicketModel
+  applyCoupon(input: ApplyCouponInput!): CouponPreviewPayload!
+  approveShopApplication(shopId: String!): Boolean!
+  archiveProduct(productId: String!, shopId: String): ProductModel!
+  callWaiter(input: CallWaiterInput!): ServiceTicketModel!
+  cancelOrder(input: CancelOrderInput!): OrderPayload!
+  confirmPaymentCallback(input: ConfirmPaymentCallbackInput!): OrderPayload!
+  createAddress(input: CreateAddressInput!): UserAddressModel!
+  createBanner(input: CreateBannerInput!): BannerModel!
+  createOrder(input: CreateOrderInput!): OrderPayload!
+  createPlatformCoupon(input: CreatePlatformCouponInput!): PlatformCouponModel!
+  createPrinter(input: CreatePrinterInput!, shopId: String): PrinterModel!
+  createProduct(input: CreateProductInput!, shopId: String!): ProductModel!
+  createStaff(input: CreateStaffInput!, shopId: String): StaffModel!
+  createStaffAccount(input: CreateStaffAccountInput!): StaffUser!
+  createTable(shopId: String): Table!
+  deleteAddress(addressId: String!): Boolean!
+  deletePrinter(printerId: String!, shopId: String): Boolean!
+  deleteStaff(shopId: String, staffId: String!, verification: SensitiveActionVerificationInput!): Boolean!
+  deleteStaffUser(userId: String!): Boolean!
+  deleteTable(id: String!, shopId: String): Boolean!
+  disableBanner(bannerId: String!): Boolean!
+  initiateMockPayment(orderId: String!): String!
+  initiatePayment(input: InitiatePaymentInput!): PaymentPayload!
+  markDeliveryOrderReady(input: MarkDeliveryOrderReadyInput!): OrderPayload!
+  markStaffNotificationRead(input: MarkStaffNotificationReadInput!): Boolean!
+  pushStaffAnnouncement(content: String!, shopId: String!, title: String!): StaffNotificationModel!
+  rejectShopApplication(reason: String!, shopId: String!): Boolean!
+  reprintOrder(orderId: String!): StaffPrintJobModel!
+  resetStaffPassword(shopId: String, staffId: String!, verification: SensitiveActionVerificationInput!): ResetPasswordPayload!
+  resolveServiceTicket(input: ResolveServiceTicketInput!): ServiceTicketModel
+  respondCall(callId: String!): ServiceTicketModel
+  runPrintRetryCycle(shopId: String): PrintRetryCycleResultModel!
+  staffLogin(password: String!, phone: String!): AuthPayloadModel!
+  submitShopApplication(input: CreateShopApplicationInput!): ShopApplicationModel!
+  testPrinter(printerId: String!, shopId: String): Boolean!
+  updateAddress(addressId: String!, input: UpdateAddressInput!): UserAddressModel!
+  updateDeliveryConfig(input: DeliveryConfigInput!, shopId: String!, verification: SensitiveActionVerificationInput!): ShopDeliveryConfigModel!
+  updateManagedShop(input: UpdateManagedShopInput!, shopId: String!): Boolean!
+  updateOrderStatus(id: String!, shopId: String, status: OrderStatus!): MerchantDispatchOrder!
+  updatePerformanceRule(input: UpdatePerformanceRuleInput!, shopId: String): PerformanceRuleModel!
+  updatePrinter(input: UpdatePrinterInput!, printerId: String!, shopId: String): PrinterModel
+  updateProduct(input: UpdateProductInput!, productId: String!, shopId: String): ProductModel
+  updateServiceTicketStatus(input: UpdateServiceTicketStatusInput!): ServiceTicketModel
+  updateStaffRole(input: UpdateStaffRoleInput!): StaffUser!
+  updateShop(input: UpdateShopInput!, shopId: String): Shop!
+  updateStaff(input: UpdateStaffInput!, shopId: String, staffId: String!): StaffModel
+  updateTable(capacity: Int, id: String!, shopId: String, tableNumber: String!): Table!
+  updateTablePosition(id: String!, shopId: String, x: Float!, y: Float!): Table!
+  updateTablePositions(input: [TablePositionInput!]!, shopId: String): [Table!]!
+}
+
+type ObservabilityMetricsModel {
+  avgLatencyMs: Float!
+  errorRatePct: Float!
+  slowRatePct: Float!
+  totalRequests: Int!
+  traceCoveragePct: Float!
+}
+
+type Order {
+  createdAt: String!
+  id: ID!
+  items: [OrderItem!]!
+  status: String!
+  totalAmount: Int!
+}
+
+type OrderDetail {
+  createdAt: String!
+  deliveryType: String!
+  id: ID!
+  items: [OrderItem!]!
+  orderNo: String!
+  shopName: String!
+  status: String!
+  tableName: String
+  totalAmount: Int!
+}
+
+type OrderError {
+  code: String!
+  message: String!
+}
+
+type OrderItem {
+  priceAtTime: Int!
+  product: OrderItemProduct!
+  quantity: Int!
+}
+
+type OrderItemProduct {
+  imageUrl: String
+  name: String!
+}
+
+type OrderModel {
+  deliveryType: DeliveryType!
+  id: ID!
+  orderNo: String!
+  paymentState: PaymentState!
+  state: OrderState!
+  totalAmount: Int!
+}
+
+type OrderPayload {
+  error: OrderError
+  ok: Boolean!
+  order: OrderModel
+}
+
+enum OrderState {
+  CANCELLED
+  COMPLETED
+  DRAFT
+  PAID
+  PAYMENT_FAILED
+  PENDING_PAYMENT
+  PREPARING
+  READY
+  REFUNDED
+  REFUND_PENDING
+}
+
+enum OrderStatus {
+  CANCELLED
+  COMPLETED
+  PENDING
+  PREPARING
+}
+
+enum PaperSizeInput {
+  A4
+  THERMAL_58MM
+  THERMAL_80MM
+}
+
+enum PaperSizeModel {
+  A4
+  THERMAL_58MM
+  THERMAL_80MM
+}
+
+type PaymentAttemptModel {
+  channel: PaymentChannel!
+  id: ID!
+  state: PaymentState!
+}
+
+enum PaymentChannel {
+  TELEBIRR_APP
+  TELEBIRR_H5
+}
+
+enum PaymentMethod {
+  CASH
+  TELEBIRR
+}
+
+type PaymentMetricsModel {
+  callbackFailed: Int!
+  callbackReplayRejected: Int!
+  callbackSuccess: Int!
+  callbackTxnConflict: Int!
+}
+
+type PaymentPayload {
+  error: OrderError
+  ok: Boolean!
+  payment: PaymentAttemptModel
+  rawRequest: String
+  toPayUrl: String
+}
+
+enum PaymentState {
+  FAILED
+  INITIATED
+  NOT_REQUIRED
+  PENDING
+  REFUNDED
+  SUCCESS
+}
+
+type PerformanceRuleModel {
+  avgResponseSecondsWeight: Int!
+  id: ID!
+  resolvedCountWeight: Int!
+  responseRateWeight: Int!
+  rewardRulesJson: String
+  shopId: String!
+}
+
+type PlatformCouponModel {
+  code: String!
+  discountValue: Float!
+  id: ID!
+  minOrderAmount: Int
+  ruleType: PlatformCouponRuleTypeModel!
+  status: PlatformCouponStatusModel!
+  targetProductIds: [String!]!
+  targetShopIds: [String!]!
+}
+
+enum PlatformCouponRuleTypeInput {
+  MIN_ORDER
+  NEW_USER
+  TARGET_SCOPE
+}
+
+enum PlatformCouponRuleTypeModel {
+  MIN_ORDER
+  NEW_USER
+  TARGET_SCOPE
+}
+
+enum PlatformCouponStatusInput {
+  ACTIVE
+  DISABLED
+  DRAFT
+  EXPIRED
+}
+
+enum PlatformCouponStatusModel {
+  ACTIVE
+  DISABLED
+  DRAFT
+  EXPIRED
+}
+
+type PrintJobModel {
+  errorMessage: String
+  id: ID!
+  orderId: ID!
+  printerId: ID!
+  retryCount: Float!
+  status: PrintStatusModel!
+}
+
+type PrintRetryCycleResultModel {
+  alerted: Int!
+  failed: Int!
+  processed: Int!
+  succeeded: Int!
+}
+
+enum PrintStatusModel {
+  FAILED
+  PENDING
+  SUCCESS
+}
+
+type PrinterModel {
+  categoryFilter: [String!]!
+  enabled: Boolean!
+  id: ID!
+  ipAddress: String
+  name: String!
+  paperSize: PaperSizeModel!
+  printerType: PrinterTypeModel!
+  shopId: String!
+}
+
+enum PrinterTypeInput {
+  BLUETOOTH
+  ETHERNET
+  USB
+}
+
+enum PrinterTypeModel {
+  BLUETOOTH
+  ETHERNET
+  USB
+}
+
+enum ProductStatusModel {
+  ACTIVE
+  ARCHIVED
+}
+
+type ProductModel {
+  active: Boolean!
+  category: String!
+  id: ID!
+  imageUrl: String
+  name: String!
+  shopId: String!
+  status: ProductStatusModel!
+  unitPrice: Int!
+}
+
+type PromotionStatsByStaffModel {
+  conversionRatePct: Int!
+  inviteClicks: Int!
+  newUsers: Int!
+  orderContributions: Int!
+  staffId: String!
+  staffName: String!
+}
+
+type Query {
+  adminDashboard(range: ReportRangeInput, shopId: String): AdminDashboardModel!
+  alertStatus: AlertStatusModel!
+  availableCoupons(shopId: String!): [CouponModel!]!
+  banners(status: BannerStatusModel): [BannerModel!]!
+  businessReport(range: ReportRangeInput!, shopId: String): BusinessReportModel!
+  checkDelivery(address: AddressInput!, shopId: String!): DeliveryCheckResultModel!
+  deliveryConfig(shopId: String!): ShopDeliveryConfigModel!
+  deliveryOrders(filters: DeliveryOrderFilterInput, shopId: String!): [OrderModel!]!
+  dependencyHealth: DependencyHealthModel!
+  exportPromotionStatsCsv(range: ReportRangeInput!, shopId: String): ExportPayloadModel!
+  getDashboardMetrics(shopId: String!): DashboardMetrics!
+  getOrder(id: ID!): OrderDetail
+  getOrders: [Order!]!
+  getTables(shopId: String!): [Table!]!
+  getStaffList(shopId: String!): [StaffUser!]!
+  managedShops: [ManagedShopModel!]!
+  merchantDispatchOrders(shopId: String): [MerchantDispatchOrder!]!
+  myAddresses: [UserAddressModel!]!
+  myCalls: [ServiceTicketModel!]!
+  myNotifications(filters: StaffNotificationFilterInput, shopId: String): [StaffNotificationModel!]!
+  myPerformance(range: StaffPerformanceRangeInput!): StaffPerformanceModel!
+  myPromotionCode: StaffPromotionCodeModel!
+  myPromotionStats: StaffPromotionStatsModel!
+  observabilityMetrics: ObservabilityMetricsModel!
+  orderHealth: String!
+  paymentMetrics: PaymentMetricsModel!
+  pendingShops: [ShopApplicationModel!]!
+  performanceRule(shopId: String): PerformanceRuleModel!
+  platformCoupons(status: PlatformCouponStatusModel): [PlatformCouponModel!]!
+  printJobs(shopId: String): [PrintJobModel!]!
+  printers(shopId: String): [PrinterModel!]!
+  products(category: String, shopId: String): [ProductModel!]!
+  promotionStatsByStaff(range: ReportRangeInput!, shopId: String): [PromotionStatsByStaffModel!]!
+  serviceTicketFeedVersion(shopId: String): String!
+  serviceTickets(shopId: String): [ServiceTicketModel!]!
+  shop(id: String!): Shop!
+  shopMenu(shopId: String!): [ShopMenuProductModel!]!
+  shops: [Shop!]!
+  staffs(page: Int, pageSize: Int, phoneKeyword: String, role: String, shopId: String, status: StaffStatusModel): [StaffModel!]!
+}
+
+enum ReportPeriodInput {
+  DAY
+  MONTH
+  WEEK
+}
+
+input ReportRangeInput {
+  period: ReportPeriodInput! = DAY
+}
+
+type ResetPasswordPayload {
+  ok: Boolean!
+  temporaryPassword: String!
+}
+
+input ResolveServiceTicketInput {
+  ticketId: String!
+}
+
+input SensitiveActionVerificationInput {
+  code: String!
+  reason: String
+}
+
+enum ServiceTicketCallType {
+  CLEANUP
+  OTHER
+  PAYMENT
+  WAITER
+}
+
+type ServiceTicketModel {
+  acceptedAt: String
+  assignedStaffUserId: String
+  callType: ServiceTicketCallType!
+  createdAt: String!
+  id: ID!
+  reason: String!
+  requestedByUserId: String!
+  resolvedAt: String
+  respondedAt: String
+  responseDuration: Float
+  shopId: String!
+  status: ServiceTicketStatus!
+  tableId: String!
+}
+
+enum ServiceTicketStatus {
+  ACCEPTED
+  OPEN
+  RESOLVED
+}
+
+type Shop {
+  active: Boolean!
+  contactPhone: String
+  description: String
+  id: ID!
+  logoUrl: String
+  name: String!
+}
+
+type ShopApplicationModel {
+  contactName: String!
+  contactPhone: String!
+  id: ID!
+  rejectReason: String
+  shopName: String!
+  status: ApplicationStatusModel!
+}
+
+type ShopDeliveryConfigModel {
+  deliveryAcceptMode: DeliveryAcceptMode!
+  deliveryEnabled: Boolean!
+  deliveryFeeType: DeliveryFeeType!
+  deliveryOpenTime: String
+  deliveryRadius: Float
+  dineInEnabled: Boolean!
+  dineInOpenTime: String
+  fixedFee: Int
+  freeDeliveryThreshold: Int
+  pickupEnabled: Boolean!
+  pickupOpenTime: String
+}
+
+type ShopMenuProductModel {
+  category: String!
+  id: ID!
+  imageUrl: String
+  name: String!
+  unitPrice: Int!
+}
+
+type StaffModel {
+  id: ID!
+  name: String!
+  phone: String!
+  role: StaffRoleModel!
+  shopId: String!
+  status: StaffStatusModel!
+}
+
+type StaffUser {
+  id: ID!
+  name: String!
+  phone: String!
+  role: StaffRoleModel!
+  shopId: String!
+  status: StaffStatusModel!
+}
+
+input StaffNotificationFilterInput {
+  page: Float
+  pageSize: Float
+  unreadOnly: Boolean
+}
+
+type StaffNotificationModel {
+  content: String!
+  createdAt: String!
+  id: ID!
+  readAt: String
+  recipientUserId: String!
+  relatedTicketId: String
+  shopId: String!
+  title: String!
+  type: StaffNotificationType!
+}
+
+enum StaffNotificationType {
+  ANNOUNCEMENT
+  CALL
+  REWARD
+}
+
+type StaffPerformanceModel {
+  avgResponseSeconds: Float!
+  handledCount: Float!
+  period: String!
+  points: Float!
+  responseRatePct: Float!
+  staffUserId: String!
+}
+
+enum StaffPerformancePeriod {
+  DAY
+  MONTH
+  WEEK
+}
+
+input StaffPerformanceRangeInput {
+  period: StaffPerformancePeriod! = DAY
+}
+
+type StaffPrintJobModel {
+  id: ID!
+  orderId: ID!
+  printerId: ID!
+  retryCount: Float!
+  status: String!
+}
+
+type StaffPromotionCodeModel {
+  code: String!
+  qrContent: String!
+  shortLink: String!
+}
+
+type StaffPromotionStatsModel {
+  conversionRatePct: Float!
+  inviteClicks: Float!
+  newUsers: Float!
+  orderContributions: Float!
+}
+
+enum StaffRoleInput {
+  CASHIER
+  KITCHEN
+  MANAGER
+  WAITER
+}
+
+enum StaffRoleModel {
+  CASHIER
+  KITCHEN
+  MANAGER
+  WAITER
+}
+
+enum StaffStatusInput {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum StaffStatusModel {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+type Subscription {
+  printJobUpdated: StaffPrintJobModel!
+  serviceTicketUpdated: ServiceTicketModel!
+  tableStatusChanged(shopId: String!): Table!
+}
+
+type Table {
+  capacity: Int!
+  id: ID!
+  posX: Float!
+  posY: Float!
+  shopId: String!
+  status: TableStatus!
+  tableNumber: String!
+}
+
+input TablePositionInput {
+  id: ID!
+  posX: Float!
+  posY: Float!
+}
+
+enum TableStatus {
+  AVAILABLE
+  DIRTY
+  OCCUPIED
+}
+
+input UpdateAddressInput {
+  detailAddress: String!
+  isDefault: Boolean
+  latitude: Float
+  longitude: Float
+  phone: String!
+  receiverName: String!
+}
+
+input UpdateManagedShopInput {
+  name: String
+  online: Boolean
+}
+
+input UpdatePerformanceRuleInput {
+  avgResponseSecondsWeight: Float!
+  resolvedCountWeight: Float!
+  responseRateWeight: Float!
+  rewardRulesJson: String
+}
+
+input UpdatePrinterInput {
+  categoryFilter: [String!]
+  enabled: Boolean
+  ipAddress: String
+  name: String
+  paperSize: PaperSizeInput
+  port: Float
+  printerType: PrinterTypeInput
+}
+
+input UpdateProductInput {
+  active: Boolean
+  category: String
+  imageUrl: String
+  name: String
+  unitPrice: Float
+}
+
+input UpdateServiceTicketStatusInput {
+  status: ServiceTicketStatus!
+  ticketId: String!
+}
+
+input UpdateStaffRoleInput {
+  newRole: StaffRoleInput!
+  userId: String!
+}
+
+input UpdateShopInput {
+  contactPhone: String
+  description: String
+  isOpen: Boolean
+  logoUrl: String
+  name: String
+}
+
+input UpdateStaffInput {
+  name: String
+  phone: String
+  role: StaffRoleInput
+  status: StaffStatusInput
+}
+
+type UserAddressModel {
+  detailAddress: String!
+  id: ID!
+  isDefault: Boolean!
+  phone: String!
+  receiverName: String!
+}

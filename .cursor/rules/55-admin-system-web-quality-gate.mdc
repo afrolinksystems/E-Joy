@@ -1,0 +1,32 @@
+---
+description: Admin/System-Admin web UX and business quality gate
+globs: apps/customer-web/src/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Admin/System-Admin Web Quality Gate
+
+- Trigger: when `import.meta.env.MODE` is `admin` or `system-admin`.
+- Goal: deliver desktop backoffice UX with clear business logic, not mobile-style shell pages.
+
+## Must-Have Structure
+
+- Desktop layout required: side navigation + top bar + content area.
+- At least one core data table/list with filters and detail view per page.
+- No bottom mobile tab bar in backoffice desktop mode.
+- Default landing view must be backoffice dashboard/console, not customer home.
+
+## Business Logic Minimum
+
+- Every module defines: key KPI cards, primary action, and state transition feedback.
+- Include permission-aware rendering (`customer`, `lobby_manager`, `admin`, `system_admin`).
+- Include loading, empty, error, and unauthorized states for interactive blocks.
+
+## Delivery Gate (cannot skip)
+
+- Map screen sections to PRD goals before implementation.
+- Run and verify:
+  - `pnpm --filter customer-web lint`
+  - `pnpm --filter customer-web type-check`
+  - `pnpm --filter customer-web build`
+- Demo scripts must be validated with clean ports and expected URLs.

@@ -1,0 +1,7 @@
+packages:
+  - "apps/order-service"
+  - "apps/admin-web"
+  - "apps/super-admin-web"
+  - "apps/customer-web"
+  - "apps/mawa-web"
+  - "packages/*"

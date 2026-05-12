@@ -1,0 +1,26 @@
+---
+description: Single-founder strict execution mode (ZH/EN)
+alwaysApply: true
+---
+
+# 单人团队严格执行模式 / Single-Founder Strict Mode
+
+- 目标 / Goal: 以最少沟通轮次，持续交付到“可运行、可验证、可发布”。
+- 默认执行 / Default action: 除非用户明确要求先讨论，否则直接实现并验证，不停留在方案层。
+- 小步闭环 / Small closed loops: 每次只做最小可验证增量，完成即继续下一项。
+- 风险前置 / Risk first: 高风险操作先说明风险与回滚，再执行。
+- 外部阻塞显式化 / Explicit blockers: 外部依赖单列，不标记为已完成。
+
+## 执行循环 / Execution Loop
+
+- 刷新任务清单，区分“可自动完成 / 外部阻塞 / 待确认”。
+- 先做最高优先级可自动项（P0 > P1 > P2）。
+- 每轮必须验证：`lint` + `type-check` + `test` + `build`（按影响范围执行）。
+- 完成后回填证据：文件、commit、CI run、脚本结果与完成时间。
+
+## 完成定义 / Definition of Done
+
+- 代码实现完成，行为可复现。
+- 相关测试通过，无新增 lint/type 问题。
+- 文档与运行手册已同步。
+- 有明确回滚路径（脚本或步骤）。

@@ -1,0 +1,61 @@
+# =========================
+# E-Joy Full-Stack .gitignore
+# =========================
+
+# 1. 依赖文件 (Dependencies)
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 2. 环境变量与机密信息 (Security - 绝对红线)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+# 允许提交配置模板
+!.env.example
+
+# 3. 顾客端前端构建产物 (Next.js / Vite / React)
+apps/customer-web/dist/
+apps/customer-web/build/
+apps/customer-web/.next/
+apps/customer-web/out/
+# 如果根目录也有构建产物
+.next/
+dist/
+build/
+
+# 4. 订单服务后端构建产物 (NestJS)
+apps/order-service/dist/
+apps/order-service/.nest/
+apps/order-service/uploads/
+
+# 5. 数据库与 Prisma (Database)
+*.db
+*.db-journal
+apps/order-service/prisma/migrations/
+# 注意：通常保留 migrations 提交，但如果你想重新生成可以忽略
+
+# 6. 系统与编辑器缓存 (OS & IDE)
+.DS_Store
+.cache/
+.vscode/
+.idea/
+*.swp
+*.swo
+.eslintcache
+
+# 7. 测试与日志 (Testing & Logs)
+coverage/
+logs/
+*.log
+
+# 8. Docker 本地挂载卷 (如果你做了本地卷映射)
+docker-data/
+postgres-data/
+redis-data/

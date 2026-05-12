@@ -1,0 +1,37 @@
+---
+description: Figma MCP UI sync mode for design-driven frontend delivery (ZH/EN)
+globs: apps/*/src/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Figma MCP UI Sync Mode / Figma 协作同步模式
+
+- Trigger / 触发条件: when UI changes are requested and Figma MCP is available.
+- Goal / 目标: keep implementation aligned with design intent while preserving project conventions.
+
+## Required Workflow / 必须流程
+
+1) Read design context first / 先读设计上下文
+- Fetch node context from Figma MCP (fileKey + nodeId).
+- Capture key constraints: spacing, typography, states, interaction notes.
+
+2) Adapt to codebase / 工程化适配
+- Reuse existing components/tokens/styles before creating new ones.
+- Avoid direct pixel-perfect copy when it conflicts with accessibility or existing architecture.
+
+3) Record design reference / 记录设计引用
+- For each UI task, include `Design Ref` (Figma URL or node id) in task notes/todo.
+- Document intentional deviations with short rationale.
+
+4) Verify before done / 完成前验证
+- Run impacted checks:
+  - `pnpm --filter customer-web lint`
+  - `pnpm --filter customer-web type-check`
+  - `pnpm --filter customer-web build`
+- Ensure loading/empty/error/disabled states are present for interactive UI.
+
+## Guardrails / 护栏
+
+- Do not introduce `any` for UI data contracts unless unavoidable and documented.
+- Prefer semantic HTML and accessible labels/roles.
+- Keep visual changes scoped; avoid unrelated refactors in same patch.

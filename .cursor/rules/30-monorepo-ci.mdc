@@ -1,0 +1,19 @@
+---
+description: Monorepo dependency and CI safeguards
+alwaysApply: true
+---
+
+# Monorepo and CI Safeguards
+
+- Use pnpm workspace filters for app dependencies:
+  - `pnpm --filter customer-web add ...`
+  - `pnpm --filter order-service add ...`
+- Do not install app dependencies in workspace root by default.
+- Keep runtime versions aligned: `.nvmrc`, `engines`, CI Node version.
+- CI checks must include lint, type-check, test, build.
+
+## Reliability Rules
+
+- Avoid wildcard package names (e.g. `@radix-ui/react-*`).
+- Pin infra images (Kafka/Postgres/Redis/Meilisearch), avoid `latest`.
+- Prefer `docker compose` command syntax.

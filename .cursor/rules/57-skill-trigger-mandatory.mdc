@@ -1,0 +1,25 @@
+---
+description: Mandatory skill trigger policy for delivery quality
+alwaysApply: true
+---
+
+# Skill Trigger Mandatory Policy
+
+- Skills are required process tools, not optional helpers.
+- If a task matches a trigger, run the matching skill before implementation.
+
+## Trigger Matrix
+
+- Rule/governance updates -> run create-rule skill first.
+- Figma/UI alignment tasks -> run UI/design workflow and verify token/state coverage.
+- Editor/runtime config tasks -> run update settings workflow before edits.
+- New reusable AI workflow -> run create-skill workflow.
+
+## Gate Checks
+
+- No "done" if required skill was skipped.
+- If skill guidance conflicts with project rules, follow project rules and document deviation.
+- Always include a short "skill used" note in delivery summary:
+  - skill name
+  - why triggered
+  - what decisions it enforced

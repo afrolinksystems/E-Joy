@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+
+/* Full-page print (Cmd+P): hide shell. Kitchen tickets use react-to-print iframe. */
+@media print {
+  .admin-no-print {
+    display: none !important;
+  }
+}

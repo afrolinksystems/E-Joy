@@ -1,0 +1,19 @@
+---
+description: Frontend standards for React Vite app
+globs: apps/customer-web/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Frontend Standards
+
+- Stack baseline: React + TypeScript + Vite + Tailwind v4.
+- Tailwind v4 setup uses `@tailwindcss/vite` and `@import "tailwindcss";`.
+- Use `@tanstack/react-query` for server state, `zustand` for client state.
+- Keep components small; move side effects to hooks/services.
+- Prefer type-safe API contracts and explicit loading/error states.
+
+## File Quality
+
+- No `any` unless justified with a short comment.
+- Do not add dead CSS or duplicate utility classes.
+- Keep page-level components focused; extract reusable UI primitives.

@@ -1,0 +1,24 @@
+---
+description: Stack-aware mode for React/TypeScript frontend (ZH/EN)
+globs: apps/*/src/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# React Frontend Mode / React 前端模式
+
+- Focus / 聚焦: UI state correctness, UX feedback, and strict typing.
+- Reuse-first / 先复用: Prefer existing components/hooks before creating new abstractions.
+- Contract-first / 契约优先: Any API/UI change must keep loading/error/empty states explicit.
+
+## Mandatory Checks / 强制检查
+
+- No new `any` unless unavoidable and documented briefly.
+- Run impacted frontend checks before done:
+  - `pnpm --filter customer-web lint`
+  - `pnpm --filter customer-web type-check`
+  - `pnpm --filter customer-web build`
+
+## Delivery Style / 交付方式
+
+- Keep components small; extract repeated logic to hooks.
+- For behavior changes, add or update at least one test case.

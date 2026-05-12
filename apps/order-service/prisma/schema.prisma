@@ -1,0 +1,638 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderState {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+  PAYMENT_FAILED
+}
+
+/// Merchant dispatch board (kitchen / front-of-house) simplified lifecycle
+enum OrderStatus {
+  PENDING
+  PREPARING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  TELEBIRR
+  CASH
+}
+
+enum PaymentState {
+  NOT_REQUIRED
+  INITIATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentChannel {
+  TELEBIRR_APP
+  TELEBIRR_H5
+}
+
+enum StatusOperatorType {
+  SYSTEM
+  CUSTOMER
+  STAFF
+  ADMIN
+  PAYMENT_PROVIDER
+}
+
+enum ServiceTicketStatus {
+  OPEN
+  ACCEPTED
+  RESOLVED
+}
+
+enum ServiceTicketCallType {
+  WAITER
+  PAYMENT
+  CLEANUP
+  OTHER
+}
+
+enum StaffRole {
+  WAITER
+  MANAGER
+  CASHIER
+  KITCHEN
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PlatformAdminStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PlatformAdminRole {
+  OWNER
+  OPERATOR
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum DeliveryType {
+  DINE_IN
+  PICKUP
+  DELIVERY
+}
+
+enum DeliveryFeeType {
+  FIXED
+  DISTANCE_BASED
+}
+
+/// Floor map: persisted cleanliness; OCCUPIED is derived from active orders in GraphQL.
+enum DiningTableVisualState {
+  AVAILABLE
+  DIRTY
+}
+
+enum PrinterType {
+  ETHERNET
+  USB
+  BLUETOOTH
+}
+
+enum PaperSize {
+  THERMAL_58MM
+  THERMAL_80MM
+  A4
+}
+
+enum PrintStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PlatformCouponStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  DISABLED
+}
+
+enum BannerStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  addresses UserAddress[]
+  requestedServiceTickets ServiceTicket[] @relation("ServiceTicketRequestedBy")
+  assignedServiceTickets  ServiceTicket[] @relation("ServiceTicketAssignedStaff")
+}
+
+model Shop {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  contactPhone String?
+  logoUrl      String?
+  active       Boolean       @default(true)
+  updatedBy    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tables    DiningTable[]
+  products  Product[]
+  orders    Order[]
+  coupons   Coupon[]
+  staffs    Staff[]
+  deliveryConfig ShopDeliveryConfig?
+  printers  PrinterConfig[]
+    serviceTickets ServiceTicket[]
+    performanceRule PerformanceRule?
+    paymentConfig ShopPaymentConfig?
+  }
+
+model DiningTable {
+  id        String   @id @default(cuid())
+  shopId    String
+  /// Display label / table number (e.g. Hall A12)
+  name      String
+  capacity  Int      @default(4)
+  /// Normalized 0–1 position on the floor plan (left)
+  posX      Float    @default(0.25)
+  /// Normalized 0–1 position on the floor plan (top)
+  posY      Float    @default(0.25)
+  visualState DiningTableVisualState @default(AVAILABLE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  orders    Order[]
+  serviceTickets ServiceTicket[]
+
+  @@unique([shopId, name])
+}
+
+model Product {
+  id        String        @id @default(cuid())
+  shopId    String
+  name      String
+  category  String        @default("General")
+  unitPrice Int
+  imageUrl  String?
+  active    Boolean       @default(true)
+  status    ProductStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  shop       Shop        @relation(fields: [shopId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Coupon {
+  id            String           @id @default(cuid())
+  shopId        String
+  code          String
+  discountValue Int
+  active        Boolean          @default(true)
+  validFrom     DateTime
+  validUntil    DateTime
+  usageLimit    Int              @default(0)
+  usedCount     Int              @default(0)
+  perUserLimit  Int              @default(1)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  shop          Shop             @relation(fields: [shopId], references: [id])
+  orders        Order[]
+  usageLogs     CouponUsageLog[]
+
+  @@unique([shopId, code])
+}
+
+model CouponUsageLog {
+  id             String   @id @default(cuid())
+  couponId       String
+  orderId        String   @unique
+  userId         String
+  discountAmount Int
+  createdAt      DateTime @default(now())
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id               String                   @id @default(cuid())
+  orderNo          String                   @unique
+  idempotencyKey   String
+  requestHash      String
+  userId           String
+  shopId           String
+  tableId          String?
+  deliveryType     DeliveryType             @default(DINE_IN)
+  addressId        String?
+  deliveryFee      Int?
+  pickupCode       String?
+  estimatedTime    DateTime?
+  state            OrderState               @default(DRAFT)
+  /// Merchant dispatch status (parallel to `state`; updated by kitchen actions)
+  status           OrderStatus              @default(PENDING)
+  paymentMethod    PaymentMethod
+  paymentState     PaymentState             @default(PENDING)
+  subtotalAmount   Int
+  discountAmount   Int                      @default(0)
+  totalAmount      Int
+  note             String?
+  couponId         String?
+  pricingSnapshot  Json
+  providerTxnId    String?
+  paidAt           DateTime?
+  /// Kitchen accepted (merchant status → PREPARING); used for prep-time analytics
+  acceptedAt       DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  user             User                     @relation(fields: [userId], references: [id])
+  shop             Shop                     @relation(fields: [shopId], references: [id])
+  table            DiningTable?             @relation(fields: [tableId], references: [id])
+  address          UserAddress?             @relation(fields: [addressId], references: [id])
+  coupon           Coupon?                  @relation(fields: [couponId], references: [id])
+  items            OrderItem[]
+  statusLogs       OrderStatusLog[]
+  paymentAttempts  PaymentAttempt[]
+  callbackReceipts PaymentCallbackReceipt[]
+  printJobs        PrintJob[]
+
+  @@unique([shopId, idempotencyKey])
+  @@index([shopId, state, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Staff {
+  id            String      @id @default(cuid())
+  shopId        String
+  name          String
+  phone         String      @unique
+  passwordHash  String
+  role          StaffRole   @default(WAITER)
+  status        StaffStatus @default(ACTIVE)
+  lastLoginAt   DateTime?
+  promotionCode String?     @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  shop          Shop        @relation(fields: [shopId], references: [id])
+
+  @@index([shopId, status])
+}
+
+model UserAddress {
+  id            String   @id @default(cuid())
+  userId        String
+  receiverName  String
+  phone         String
+  province      String?
+  city          String?
+  district      String?
+  detailAddress String
+  isDefault     Boolean  @default(false)
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders        Order[]
+
+  @@index([userId, isDefault])
+}
+
+model ShopDeliveryConfig {
+  id                    String          @id @default(cuid())
+  shopId                 String          @unique
+  deliveryEnabled        Boolean         @default(false)
+  deliveryAutoAccept     Boolean         @default(false)
+  pickupEnabled          Boolean         @default(true)
+  dineInEnabled          Boolean         @default(true)
+  deliveryRadius         Float?
+  deliveryFeeType        DeliveryFeeType @default(FIXED)
+  fixedFee               Int?
+  freeDeliveryThreshold  Int?
+  distanceFeeRule        Json?
+  dineInOpenTime         String?
+  pickupOpenTime         String?
+  deliveryOpenTime       String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  shop                   Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model PrinterConfig {
+  id             String      @id @default(cuid())
+  shopId         String
+  name           String
+  printerType    PrinterType @default(ETHERNET)
+  ipAddress      String?
+  port           Int?
+  usbDevicePath  String?
+  bluetoothMac   String?
+  paperSize      PaperSize   @default(THERMAL_80MM)
+  categoryFilter String[]
+  enabled        Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  shop           Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  printJobs      PrintJob[]
+
+  @@index([shopId, enabled])
+}
+
+model PrintJob {
+  id           String      @id @default(cuid())
+  orderId      String
+  printerId    String
+  status       PrintStatus @default(PENDING)
+  retryCount   Int         @default(0)
+  errorMessage String?
+  printedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  printer      PrinterConfig @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([printerId, createdAt])
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  productId           String
+  productNameSnapshot String
+  /// 下单时单价快照（分），业务上与「priceAtTime」同义
+  unitPriceSnapshot   Int
+  quantity            Int
+  subtotal            Int
+  remark              String?
+  createdAt           DateTime @default(now())
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product             Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusLog {
+  id           String             @id @default(cuid())
+  orderId      String
+  fromState    OrderState?
+  toState      OrderState
+  operatorType StatusOperatorType
+  operatorId   String?
+  reason       String?
+  metadata     Json?
+  createdAt    DateTime           @default(now())
+  order        Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model PaymentAttempt {
+  id            String         @id @default(cuid())
+  orderId       String
+  channel       PaymentChannel
+  state         PaymentState
+  providerTxnId String?
+  rawRequest    String?
+  rawCallback   String?
+  callbackAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model PaymentCallbackReceipt {
+  id            String   @id @default(cuid())
+  orderId       String
+  providerTxnId String
+  nonce         String
+  payloadHash   String
+  requestId     String?
+  sourceIp      String?
+  createdAt     DateTime @default(now())
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([providerTxnId, nonce])
+  @@index([orderId, createdAt])
+}
+
+model ServiceTicket {
+  id                  String              @id @default(cuid())
+  shopId              String
+  tableId             String
+  reason              String
+  callType            ServiceTicketCallType @default(WAITER)
+  status              ServiceTicketStatus @default(OPEN)
+  requestedByUserId   String
+  assignedStaffUserId String?
+  acceptedAt          DateTime?
+  respondedAt         DateTime?
+  responseDuration    Int?
+  resolvedAt          DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  shop                Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  table               DiningTable         @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  requestedByUser     User                @relation("ServiceTicketRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  assignedStaffUser   User?               @relation("ServiceTicketAssignedStaff", fields: [assignedStaffUserId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, status, createdAt])
+  @@index([tableId, createdAt])
+  @@index([shopId, callType, createdAt])
+  @@index([shopId, respondedAt, createdAt])
+}
+
+enum StaffNotificationType {
+  CALL
+  REWARD
+  ANNOUNCEMENT
+}
+
+model StaffNotification {
+  id              String                @id @default(cuid())
+  shopId          String
+  recipientUserId String
+  type            StaffNotificationType
+  title           String
+  content         String
+  relatedTicketId String?
+  readAt          DateTime?
+  createdAt       DateTime              @default(now())
+
+  @@index([recipientUserId, createdAt])
+  @@index([shopId, createdAt])
+}
+
+model ShopApplication {
+    id              String            @id @default(cuid())
+    shopName        String
+    contactName     String
+    contactPhone    String
+    businessLicense String
+    status          ApplicationStatus @default(PENDING)
+    rejectReason    String?
+    createdShopId   String?
+    createdAt       DateTime          @default(now())
+    updatedAt       DateTime          @updatedAt
+  }
+
+model PlatformAdmin {
+  id           String              @id @default(cuid())
+  name         String
+  identifier   String              @unique
+  passwordHash String
+  role         PlatformAdminRole   @default(OPERATOR)
+  status       PlatformAdminStatus @default(ACTIVE)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model ShopPaymentConfig {
+  id         String   @id @default(cuid())
+  shopId     String   @unique
+  provider   String   @default("TELEBIRR")
+  merchantId String?
+  appId      String?
+  enabled    Boolean  @default(false)
+  testMode   Boolean  @default(true)
+  updatedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model PlatformAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  requestId  String?
+  sourceIp   String?
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model PlatformCoupon {
+  id                String               @id @default(cuid())
+  code              String               @unique
+  discountValue     Int
+  status            PlatformCouponStatus @default(DRAFT)
+  validFrom         DateTime
+  validUntil        DateTime
+  usageLimit        Int                  @default(0)
+  usedCount         Int                  @default(0)
+  scopeType         String               @default("ALL")
+  targetShopIds     String[]
+  targetProductIds  String[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+}
+
+model MarketingBanner {
+  id        String       @id @default(cuid())
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  status    BannerStatus @default(DRAFT)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model PerformanceRule {
+  id                     String   @id @default(cuid())
+  shopId                 String   @unique
+  responseRateWeight     Int      @default(40)
+  avgResponseSecondsWeight Int    @default(30)
+  resolvedCountWeight    Int      @default(30)
+  rewardRulesJson        Json?
+  updatedBy              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  shop                   Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model StaffPerformance {
+  id                   String   @id @default(cuid())
+  shopId               String
+  staffUserId          String
+  statDate             DateTime
+  respondedCount       Int      @default(0)
+  resolvedCount        Int      @default(0)
+  totalResponseSeconds Int      @default(0)
+  points               Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([shopId, staffUserId, statDate])
+  @@index([shopId, statDate])
+  @@index([staffUserId, statDate])
+}
+
+enum PromotionEventType {
+  CLICK
+  NEW_USER
+  ORDER_CONTRIBUTION
+}
+
+model PromotionLog {
+  id          String             @id @default(cuid())
+  eventKey    String             @unique
+  shopId      String
+  staffUserId String
+  eventType   PromotionEventType
+  eventDate   DateTime
+  userId      String?
+  orderId     String?
+  createdAt   DateTime           @default(now())
+
+  @@index([shopId, staffUserId, eventDate])
+  @@index([shopId, eventType, eventDate])
+}

@@ -1,0 +1,33 @@
+# Habesha Kitchen 示例菜单种子（单价为整数「分」：380 Birr = 38000，200 Birr = 20000）
+# 用法：将下方 shopId 换成你的门店 ID（本地 seed 默认为 shop_seed_1），在 GraphQL Playground / Altair 中执行。
+# HTTP: POST http://localhost:9602/graphql  （以你实际 order-service 端口为准）
+
+mutation SeedEJoyData {
+  tibs: createProduct(
+    shopId: "shop_seed_1"
+    input: {
+      name: "Tibs"
+      category: "Main Courses"
+      unitPrice: 38000
+      active: true
+    }
+  ) {
+    id
+    name
+    unitPrice
+  }
+
+  shiro: createProduct(
+    shopId: "shop_seed_1"
+    input: {
+      name: "Shiro"
+      category: "Vegetarian"
+      unitPrice: 20000
+      active: true
+    }
+  ) {
+    id
+    name
+    unitPrice
+  }
+}

@@ -1,0 +1,19 @@
+   // removed from package.json because they are not used
+   {
+    "scripts": {
+    "demo:start": "bash scripts/demo-start.sh",
+    "demo:stop": "bash scripts/demo-stop.sh",
+    "demo:test": "bash scripts/system-test.sh",
+    "demo:test:sprint1": "bash scripts/sprint1-e2e.sh",
+    "module:start": "bash scripts/module-start.sh all",
+    "module:stop": "bash scripts/module-stop.sh all",
+    "module:start:user": "bash scripts/start-user.sh",
+    "module:stop:user": "bash scripts/stop-user.sh",
+    "module:start:server": "bash scripts/start-server.sh",
+    "module:stop:server": "bash scripts/stop-server.sh",
+    "module:start:admin": "bash scripts/start-admin.sh",
+    "module:stop:admin": "bash scripts/stop-admin.sh",
+    "module:start:system-admin": "bash scripts/start-system-admin.sh",
+    "module:stop:system-admin": "bash scripts/stop-system-admin.sh"
+    }
+   }

@@ -1,0 +1,54 @@
+---
+description: Day1 bootstrap checklist for new projects (ZH/EN)
+alwaysApply: true
+---
+
+# New Project Day1 Checklist / 新项目 Day1 启动清单
+
+When starting a new repo, execute this checklist first.
+新仓库启动时，先完整执行此清单。
+
+## 1) Foundation / 基础设施
+
+- Initialize monorepo structure (`apps/`, `packages/`, workspace config).
+- Pin runtime/package manager versions (`.nvmrc`, `engines`, pnpm version).
+- Add `.gitignore` for build/cache/artifacts.
+
+## 2) CI Baseline / CI 基线
+
+- Create pipeline with required gates: `lint`, `type-check`, `test`, `build`.
+- Ensure generated artifacts step exists when needed (e.g., Prisma generate).
+- Run CI once and record run URL as baseline evidence.
+
+## 3) Rule System / 规则体系
+
+- Add strict global workflow rule (default execute + DoD + blocker handling).
+- Add stack-aware rules for frontend/backend/monorepo by globs.
+- Add reusable kickoff prompt template for future sessions.
+
+## 4) Delivery Board / 交付看板
+
+- Create `todo.md` with sections:
+  - milestones
+  - timestamped completion log
+  - risk ledger
+  - external blockers
+  - release readiness checklist
+- Every completed task must include timestamp and evidence.
+
+## 5) Local Verification / 本地验证
+
+- Add one-command smoke script for core path.
+- Add rollback script or rollback runbook.
+- Verify all checks locally before first feature wave.
+
+## 6) Definition of Ready to Build / 开发开工门禁
+
+Proceed to feature development only when all items below are true:
+仅当以下全部满足才进入功能开发：
+
+- CI baseline is green.
+- Rules are in place.
+- Todo board is initialized.
+- Smoke path is runnable.
+- Rollback path is documented.

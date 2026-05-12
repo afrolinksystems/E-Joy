@@ -1,0 +1,22 @@
+---
+description: Stack-aware mode for monorepo CI/release orchestration (ZH/EN)
+globs: "{package.json,turbo.json,pnpm-workspace.yaml,.github/workflows/**/*.yml,scripts/**/*.sh,docs/**/*.md}"
+alwaysApply: false
+---
+
+# Monorepo Release Mode / Monorepo 发布模式
+
+- Focus / 聚焦: reproducible CI, release gates, and rollback readiness.
+- Workspace discipline / 工作区纪律: install deps with `pnpm --filter`.
+- Evidence-driven / 证据驱动: mark tasks done only with commit/CI/script evidence.
+
+## Mandatory Checks / 强制检查
+
+- Keep CI gates complete: lint + type-check + test + build.
+- For release changes, verify smoke + rollback paths.
+- Avoid unpinned infra/runtime versions in compose/workflow.
+
+## Delivery Style / 交付方式
+
+- Update `todo.md` with timestamps when milestones complete.
+- External dependencies remain unchecked and listed as blockers.

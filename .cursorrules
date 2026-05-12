@@ -1,0 +1,18 @@
+# E-Joy War Room Rules (12-Hour Sprint)
+
+## 1. 核心架构红线 (绝对禁止偏离)
+- **后端:** NestJS + GraphQL + Prisma + PostgreSQL。禁止引入任何 Python 或 FastAPI 代码。
+- **前端:** React 19 + TypeScript + Vite + Tailwind v4 + Zustand。
+- **端口规范:** 本地服务必须运行在 9602 端口，严禁硬编码 3000。
+- **高并发底座:** 后端防超卖强制使用 Redis Lua 脚本 (`ioredis` 客户端)；前后端通信强制使用 `graphql-ws` 实现 WebSocket。
+
+## 2. 战时开发模式 (Single-Founder Strict Mode)
+- **禁止自行中断:** 不要去寻找或依赖 `scripts/agent_platform/` 下的 Python PRD 生成器。当前所有上下文和 PRD 都在对话上下文中。直接生成代码。
+- **契约优先:** 严格遵循 Prisma Schema 定义和已存在的 GraphQL 接口结构。
+- **幂等与一致性:** 所有的写操作 (如订单创建) 必须使用 Prisma 事务处理，并强制校验 `Idempotency-Key`。
+- **不留黑盒:** 不允许使用 `any`。业务异常必须抛出标准的 Domain Errors (如 `ConflictException`)。
+
+## 3. 完成定义 (Definition of Done)
+每次回复生成的代码必须具备：
+1) 清晰的文件路径注释。
+2) 修改完成后，建议用户在指定包 (customer-web 或 order-service) 下运行 lint 与 type-check 进行验证。

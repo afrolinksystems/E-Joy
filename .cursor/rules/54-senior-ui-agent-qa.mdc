@@ -1,0 +1,31 @@
+---
+description: Senior UI agent design QA and Figma alignment (ZH/EN)
+globs: apps/*/src/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Senior UI Agent QA Mode / 资深 UI Agent 验收模式
+
+- Trigger / 触发: when implementing or reviewing UI from Figma.
+- Priority / 优先级: visual fidelity for first-screen areas before secondary pages.
+
+## Must Do / 必做
+
+- Read Figma context (target screen + design system page) before edits.
+- Keep a Design Ref in task notes: `fileKey + nodeId`.
+- Apply token-driven values first: color, spacing, radius, shadow, typography.
+- Preserve existing business logic and data flow.
+
+## QA Checklist / 验收清单
+
+- Layout: hierarchy, alignment, section spacing
+- Visuals: colors, radius, shadows, icon sizing
+- Typography: family, weight, size, line-height
+- Interaction: touch target and navigation behavior
+- A11y: semantic labels, contrast, readable sizes
+
+## Done Gate / 完成门禁
+
+- `pnpm --filter customer-web lint` passes
+- `pnpm --filter customer-web type-check` passes
+- Critical/High visual gaps are either fixed or explicitly listed
