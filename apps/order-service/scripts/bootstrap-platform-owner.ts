@@ -8,21 +8,24 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is required');
 }
 
-const identifier = process.env.PLATFORM_OWNER_IDENTIFIER?.trim().toLowerCase();
-const password = process.env.PLATFORM_OWNER_PASSWORD?.trim();
+const rawIdentifier = process.env.PLATFORM_OWNER_IDENTIFIER?.trim().toLowerCase();
+const rawPassword = process.env.PLATFORM_OWNER_PASSWORD?.trim();
 const name = process.env.PLATFORM_OWNER_NAME?.trim() || 'E-Joy Owner';
 
-if (!identifier) {
+if (!rawIdentifier) {
   throw new Error('PLATFORM_OWNER_IDENTIFIER is required');
 }
 
-if (!password) {
+if (!rawPassword) {
   throw new Error('PLATFORM_OWNER_PASSWORD is required');
 }
 
-if (password.length < 12) {
+if (rawPassword.length < 12) {
   throw new Error('PLATFORM_OWNER_PASSWORD must be at least 12 characters');
 }
+
+const identifier: string = rawIdentifier;
+const password: string = rawPassword;
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
