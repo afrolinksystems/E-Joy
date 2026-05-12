@@ -7,7 +7,7 @@ import {
   Resolver,
   Subscription,
 } from '@nestjs/graphql';
-import { GraphQLString } from 'graphql';
+import { GraphQLBoolean, GraphQLString } from 'graphql';
 import { ForbiddenException, Inject, Logger, UseGuards } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { CurrentUserId } from '../auth/current-user-id.decorator';
@@ -229,11 +229,22 @@ export class OrderResolver {
   async initiateMockPayment(
     @Args('orderId', { type: () => GraphQLString }) orderId: string,
   ): Promise<string> {
-    const port = process.env.PORT ?? '9602';
     const base =
-      process.env.ORDER_SERVICE_PUBLIC_URL?.replace(/\/$/, '') ??
-      `http://localhost:${port}`;
-    return `${base}/payment/telebirr/mock-callback?orderId=${encodeURIComponent(orderId)}`;
+      process.env.CUSTOMER_WEB_ORIGIN?.replace(/\/$/, '') ??
+      process.env.VITE_CUSTOMER_WEB_URL?.replace(/\/$/, '') ??
+      'http://localhost:9601';
+    return `${base}/mock-telebirr?orderId=${encodeURIComponent(orderId)}`;
+  }
+
+  @Mutation(() => GraphQLBoolean, { name: 'confirmMockTelebirrPayment' })
+  async confirmMockTelebirrPayment(
+    @Args('orderId', { type: () => GraphQLString }) orderId: string,
+  ): Promise<boolean> {
+    const result = await this.orderService.applyMockPaymentSuccess(orderId);
+    if (!result.ok) {
+      throw new Error(result.error ?? 'Mock payment failed');
+    }
+    return true;
   }
 
   @UseGuards(JwtAuthGuard)

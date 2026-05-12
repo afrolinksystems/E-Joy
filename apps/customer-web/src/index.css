@@ -1254,6 +1254,250 @@ button {
   margin: 18px 14px;
 }
 
+.telebirr-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #ececec;
+  color: #161616;
+}
+
+.telebirr-phone {
+  position: relative;
+  overflow: hidden;
+  width: min(420px, 100vw);
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.telebirr-status {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  background: #46711b;
+  padding: 0 12px;
+  color: #102100;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.telebirr-topbar {
+  height: 52px;
+  background: #46711b;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+
+.telebirr-topbar button,
+.telebirr-close {
+  border: 0;
+  background: transparent;
+  color: #151515;
+}
+
+.telebirr-backdrop {
+  position: absolute;
+  inset: 80px 0 0;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.38)),
+    url('https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=700&q=80')
+      center 58px / 72% auto no-repeat,
+    #dadada;
+}
+
+.telebirr-sheet {
+  position: relative;
+  z-index: 2;
+  margin: 38px 14px 0;
+  border-radius: 14px;
+  background: #f8f8f8;
+  padding: 22px 18px 28px;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.25);
+}
+
+.telebirr-close {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+}
+
+.telebirr-sheet h1 {
+  margin: 36px 0 12px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.telebirr-amount {
+  text-align: center;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.telebirr-amount span {
+  margin-left: 5px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.telebirr-summary,
+.telebirr-methods {
+  margin-top: 22px;
+  border-radius: 10px;
+  background: white;
+  padding: 15px;
+}
+
+.telebirr-summary div {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  color: #ababab;
+  font-size: 15px;
+}
+
+.telebirr-summary strong {
+  color: #555;
+}
+
+.telebirr-methods h2 {
+  margin: 0 0 16px;
+  color: #ababab;
+  font-size: 15px;
+}
+
+.telebirr-methods label {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.telebirr-methods small,
+.telebirr-methods .disabled {
+  color: #b7b7b7;
+}
+
+.telebirr-wallet {
+  color: #0b8ed0;
+  font-size: 21px;
+}
+
+.telebirr-wallet.reward {
+  color: #14a5df;
+}
+
+.telebirr-methods b {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #0b8ed0;
+  color: white;
+  font-size: 14px;
+}
+
+.telebirr-send,
+.telebirr-success button {
+  display: inline-flex;
+  width: 100%;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 8px;
+  background: #087fc2;
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.telebirr-send:disabled {
+  opacity: 0.7;
+}
+
+.telebirr-error {
+  margin: 14px 0 0;
+  border-radius: 8px;
+  background: #fff0f0;
+  padding: 10px;
+  color: #b00020;
+  font-size: 13px;
+}
+
+.telebirr-pin {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.telebirr-pin p {
+  margin: 0 0 12px;
+  font-weight: 800;
+}
+
+.telebirr-pin div {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.telebirr-pin span {
+  height: 46px;
+  border-radius: 5px;
+  background: #e8e8e8;
+}
+
+.telebirr-success {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: calc(100vh - 28px);
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 76px 34px 44px;
+  text-align: center;
+}
+
+.telebirr-check {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border-radius: 999px;
+  background: #0797d4;
+  color: white;
+}
+
+.telebirr-success p {
+  margin: 14px 0 94px;
+  color: #32a7dc;
+  font-weight: 800;
+}
+
+.telebirr-success strong {
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.telebirr-success span {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.telebirr-success button {
+  width: min(160px, 70%);
+  margin-top: auto;
+}
+
 @media (max-width: 380px) {
   .menu-layout {
     grid-template-columns: 84px minmax(0, 1fr);

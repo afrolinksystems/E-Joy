@@ -231,7 +231,10 @@ export default function App() {
     })
     setCartOpen(false)
     await refetchOrders({ ids: nextOrderIds })
-    window.location.href = buildMockTelebirrRedirectUrl(payload.order.id)
+    window.location.href = buildMockTelebirrRedirectUrl(
+      payload.order.id,
+      payload.order.totalAmount,
+    )
   }
 
   if (!hasTableSession) {

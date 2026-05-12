@@ -61,7 +61,7 @@ export default function OrderDetailPage({ orderId, onBack }: OrderDetailPageProp
   function payWithTelebirr() {
     if (!order?.id) return
     try {
-      window.location.href = buildMockTelebirrRedirectUrl(order.id)
+      window.location.href = buildMockTelebirrRedirectUrl(order.id, order.totalAmount)
     } catch (err) {
       useToastStore
         .getState()

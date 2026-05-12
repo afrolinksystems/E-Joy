@@ -14,7 +14,14 @@ export function getOrderServiceHttpOrigin(): string {
   return 'http://localhost:9602'
 }
 
-export function buildMockTelebirrRedirectUrl(orderId: string): string {
-  const base = getOrderServiceHttpOrigin()
-  return `${base}/payment/telebirr/mock-callback?orderId=${encodeURIComponent(orderId)}`
+export function buildMockTelebirrRedirectUrl(
+  orderId: string,
+  amountCent?: number,
+): string {
+  const url = new URL('/mock-telebirr', window.location.origin)
+  url.searchParams.set('orderId', orderId)
+  if (typeof amountCent === 'number') {
+    url.searchParams.set('amount', String(amountCent))
+  }
+  return url.toString()
 }

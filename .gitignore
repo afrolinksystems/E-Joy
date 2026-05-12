@@ -29,6 +29,7 @@ apps/customer-web/out/
 .next/
 dist/
 build/
+.turbo
 
 # 4. 订单服务后端构建产物 (NestJS)
 apps/order-service/dist/
