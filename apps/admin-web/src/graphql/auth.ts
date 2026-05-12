@@ -30,6 +30,18 @@ export const MERCHANT_ME = gql`
   }
 `
 
+export const SUBMIT_SHOP_APPLICATION = gql`
+  mutation SubmitShopApplication($input: CreateShopApplicationInput!) {
+    submitShopApplication(input: $input) {
+      id
+      shopName
+      contactName
+      contactPhone
+      status
+    }
+  }
+`
+
 export type StaffLoginData = {
   staffLogin: {
     accessToken: string
@@ -53,5 +65,15 @@ export type MerchantMeData = {
       logoUrl?: string | null
       active: boolean
     }
+  }
+}
+
+export type SubmitShopApplicationData = {
+  submitShopApplication: {
+    id: string
+    shopName: string
+    contactName: string
+    contactPhone: string
+    status: string
   }
 }
