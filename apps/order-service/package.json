@@ -21,6 +21,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed": "tsx prisma/seed.ts",
+    "db:bootstrap-owner": "tsx scripts/bootstrap-platform-owner.ts",
     "db:repair-demo-shop": "tsx scripts/repair-orders-demo-shop.ts",
     "db:seed-menu": "tsx scripts/seed-menu.ts",
     "dev:jwt": "tsx scripts/generate-jwt.ts",
