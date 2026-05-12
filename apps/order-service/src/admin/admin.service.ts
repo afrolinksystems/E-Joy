@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderState, OrderStatus, Prisma } from '@prisma/client';
+import { OrderState, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import { PRISMA_CLIENT } from '../prisma/prisma.token';
@@ -170,7 +170,12 @@ export class AdminService {
   ) {}
 
   platformScopes(role: string): string[] {
-    const base = ['platform:read', 'platform:write', 'platform:audit', 'payment:write'];
+    const base = [
+      'platform:read',
+      'platform:write',
+      'platform:audit',
+      'payment:write',
+    ];
     return role.toUpperCase() === PlatformAdminRoleModel.OWNER ? base : base;
   }
 
@@ -184,7 +189,8 @@ export class AdminService {
         status: PlatformAdminStatusModel.ACTIVE,
       },
     });
-    const hash = typeof admin?.passwordHash === 'string' ? admin.passwordHash : '';
+    const hash =
+      typeof admin?.passwordHash === 'string' ? admin.passwordHash : '';
     if (!admin || !(await bcrypt.compare(password, hash))) {
       await this.recordAudit({
         actorId: undefined,
@@ -708,7 +714,9 @@ export class AdminService {
       where: { id: applicationId },
     });
     if (!application) {
-      throw new NotFoundException(`Shop application not found: ${applicationId}`);
+      throw new NotFoundException(
+        `Shop application not found: ${applicationId}`,
+      );
     }
     if (application.status !== ApplicationStatusModel.PENDING) {
       return {
@@ -959,7 +967,7 @@ export class AdminService {
     return {
       id: String(row.id),
       shopId: String(row.shopId),
-      provider: String(row.provider ?? 'TELEBIRR'),
+      provider: typeof row.provider === 'string' ? row.provider : 'TELEBIRR',
       merchantId:
         typeof row.merchantId === 'string' ? row.merchantId : undefined,
       appId: typeof row.appId === 'string' ? row.appId : undefined,
@@ -1494,9 +1502,7 @@ export class AdminService {
 
     const rawAvg = prepAvgRows[0]?.avg_min;
     const avgPrepMinutes =
-      rawAvg === null || rawAvg === undefined
-        ? 0
-        : Number(rawAvg);
+      rawAvg === null || rawAvg === undefined ? 0 : Number(rawAvg);
 
     return {
       todayRevenue,

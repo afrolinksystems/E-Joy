@@ -94,18 +94,24 @@ export class OrderService {
   async handleTelebirrWebhook(body: unknown): Promise<void> {
     const notify = this.telebirrService.parseNotifyPayload(body);
     const st = notify.tradeStatus.toUpperCase();
-    const success = st === 'SUCCESS' || st === 'TRADE_SUCCESS' || st === 'COMPLETED';
+    const success =
+      st === 'SUCCESS' || st === 'TRADE_SUCCESS' || st === 'COMPLETED';
     const rawPayload = JSON.stringify({
       nonce: randomUUID(),
       timestamp: Date.now(),
       requestId: 'telebirr-rest-webhook',
       telebirr: notify,
     });
-    const secret = process.env.TELEBIRR_APP_SECRET ?? process.env.JWT_SECRET ?? '';
+    const secret =
+      process.env.TELEBIRR_APP_SECRET ?? process.env.JWT_SECRET ?? '';
     if (!secret) {
-      throw new Error('JWT_SECRET or TELEBIRR_APP_SECRET is required for webhook processing');
+      throw new Error(
+        'JWT_SECRET or TELEBIRR_APP_SECRET is required for webhook processing',
+      );
     }
-    const signature = createHmac('sha256', secret).update(rawPayload).digest('hex');
+    const signature = createHmac('sha256', secret)
+      .update(rawPayload)
+      .digest('hex');
     const result = await this.confirmPaymentCallback({
       orderId: notify.outTradeNo,
       providerTxnId: notify.tradeNo,
@@ -128,7 +134,9 @@ export class OrderService {
     if (process.env.MOCK_PAYMENT_ENABLED === 'false') {
       return { ok: false, error: 'Mock payment is disabled' };
     }
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
     if (!order) {
       return { ok: false, error: 'Order not found' };
     }
@@ -183,7 +191,10 @@ export class OrderService {
     });
 
     if (updatedOrder.tableId) {
-      void this.emitTableStatusChanged(updatedOrder.shopId, updatedOrder.tableId);
+      void this.emitTableStatusChanged(
+        updatedOrder.shopId,
+        updatedOrder.tableId,
+      );
     }
     return { ok: true };
   }
@@ -242,10 +253,7 @@ export class OrderService {
           },
         };
       }
-      resolvedTableId = await this.resolveDineInTableId(
-        input.shopId,
-        tableRef,
-      );
+      resolvedTableId = await this.resolveDineInTableId(input.shopId, tableRef);
     }
 
     const productIds = [...new Set(input.items.map((item) => item.productId))];
@@ -525,7 +533,8 @@ export class OrderService {
               paymentRouting: {
                 shopId: input.shopId,
                 paymentMethod: input.paymentMethod,
-                provider: input.paymentMethod === 'TELEBIRR' ? 'TELEBIRR' : 'CASH',
+                provider:
+                  input.paymentMethod === 'TELEBIRR' ? 'TELEBIRR' : 'CASH',
                 mode: 'SHOP_SCOPED_CONFIG_STUB',
               },
               items: itemRows,
@@ -902,7 +911,10 @@ export class OrderService {
       }
 
       if (callbackSuccess && updatedOrder.tableId) {
-        void this.emitTableStatusChanged(updatedOrder.shopId, updatedOrder.tableId);
+        void this.emitTableStatusChanged(
+          updatedOrder.shopId,
+          updatedOrder.tableId,
+        );
       }
 
       return { ok: true, order: this.toOrderModel(updatedOrder) };
@@ -1254,7 +1266,9 @@ export class OrderService {
    * Merchant dispatch board: filter by `Order.shopId` (same scope as "merchant" in product UI).
    * Set MERCHANT_DISPATCH_DEBUG_ALL=true (non-production) to omit shop filter for debugging.
    */
-  async merchantDispatchOrders(shopId: string): Promise<MerchantDispatchOrderModel[]> {
+  async merchantDispatchOrders(
+    shopId: string,
+  ): Promise<MerchantDispatchOrderModel[]> {
     const stateNotPaidDraft = {
       state: {
         notIn: [
@@ -1276,7 +1290,9 @@ export class OrderService {
     }
 
     const rows = await this.prisma.order.findMany({
-      where: debugAllOrders ? stateNotPaidDraft : { shopId, ...stateNotPaidDraft },
+      where: debugAllOrders
+        ? stateNotPaidDraft
+        : { shopId, ...stateNotPaidDraft },
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
@@ -1322,10 +1338,7 @@ export class OrderService {
           'Only orders waiting for kitchen (PENDING) can be accepted',
         );
       }
-      if (
-        order.state !== OrderState.PAID &&
-        order.state !== OrderState.READY
-      ) {
+      if (order.state !== OrderState.PAID && order.state !== OrderState.READY) {
         throw new BadRequestException(
           'Order payment or state does not allow preparation',
         );
@@ -1708,8 +1721,7 @@ export class OrderService {
     tableRef: string;
     deliveryType: DeliveryType;
   } {
-    const tableRef =
-      input.tableId?.trim() || input.tableNumber?.trim() || '';
+    const tableRef = input.tableId?.trim() || input.tableNumber?.trim() || '';
     let deliveryType = input.deliveryType ?? DeliveryType.DINE_IN;
     if (tableRef) {
       deliveryType = DeliveryType.DINE_IN;
@@ -1718,7 +1730,8 @@ export class OrderService {
   }
 
   private buildRequestHash(input: CreateOrderInput): string {
-    const { deliveryType } = this.resolveCreateOrderDeliveryTypeAndTableRef(input);
+    const { deliveryType } =
+      this.resolveCreateOrderDeliveryTypeAndTableRef(input);
     const normalized = {
       shopId: input.shopId,
       tableId: input.tableId ?? '',
@@ -2025,7 +2038,10 @@ export class OrderService {
       take: 500,
     });
     return rows.map((row) => {
-      const r = row as Product & { category?: string; imageUrl?: string | null };
+      const r = row as Product & {
+        category?: string;
+        imageUrl?: string | null;
+      };
       return {
         id: r.id,
         name: r.name,

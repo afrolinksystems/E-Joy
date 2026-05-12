@@ -602,7 +602,9 @@ export class StaffService {
         'code' in e &&
         (e as { code: string }).code === 'P2002'
       ) {
-        throw new ConflictException('Phone already registered for a staff user');
+        throw new ConflictException(
+          'Phone already registered for a staff user',
+        );
       }
       throw e;
     }

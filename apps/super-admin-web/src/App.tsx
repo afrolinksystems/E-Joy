@@ -20,7 +20,7 @@ import {
   XCircle,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { apolloClient, SUPER_ADMIN_TOKEN_KEY } from './lib/apollo'
 
 type Page = 'dashboard' | 'applications' | 'restaurants' | 'marketing' | 'operations' | 'audit'
@@ -73,6 +73,13 @@ type ManagedShopDetail = {
     testMode: boolean
     updatedBy?: string | null
   } | null
+}
+type PaymentConfigFormState = {
+  provider: string
+  merchantId: string
+  appId: string
+  enabled: boolean
+  testMode: boolean
 }
 type Coupon = {
   id: string
@@ -576,22 +583,10 @@ function RestaurantsPage() {
 
 function RestaurantDetail({ shopId }: { shopId: string }) {
   const detail = useQuery<{ managedShop: ManagedShopDetail }>(SHOP_DETAIL, { variables: { shopId } })
-  const [payment, setPayment] = useState({ provider: 'TELEBIRR', merchantId: '', appId: '', enabled: false, testMode: true })
   const [savePayment] = useMutation(UPDATE_PAYMENT)
   const data = detail.data?.managedShop
 
-  useEffect(() => {
-    if (!data?.paymentConfig) return
-    setPayment({
-      provider: data.paymentConfig.provider,
-      merchantId: data.paymentConfig.merchantId ?? '',
-      appId: data.paymentConfig.appId ?? '',
-      enabled: data.paymentConfig.enabled,
-      testMode: data.paymentConfig.testMode,
-    })
-  }, [data?.paymentConfig])
-
-  async function save() {
+  async function save(payment: PaymentConfigFormState) {
     await savePayment({ variables: { shopId, input: payment } })
     await detail.refetch()
   }
@@ -618,19 +613,43 @@ function RestaurantDetail({ shopId }: { shopId: string }) {
       </div>
       <div>
         <h3 className="mb-2 text-sm font-bold">Telebirr config stub</h3>
-        <div className="grid gap-2">
-          <input value={payment.provider} onChange={(e) => setPayment({ ...payment, provider: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Provider" />
-          <input value={payment.merchantId} onChange={(e) => setPayment({ ...payment, merchantId: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Merchant ID" />
-          <input value={payment.appId} onChange={(e) => setPayment({ ...payment, appId: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="App ID" />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={payment.enabled} onChange={(e) => setPayment({ ...payment, enabled: e.target.checked })} /> Enabled</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={payment.testMode} onChange={(e) => setPayment({ ...payment, testMode: e.target.checked })} /> Test mode</label>
-          <button onClick={() => void save()} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Save payment config</button>
-        </div>
+        <PaymentConfigForm
+          key={data.paymentConfig?.id ?? shopId}
+          initialValue={{
+            provider: data.paymentConfig?.provider ?? 'TELEBIRR',
+            merchantId: data.paymentConfig?.merchantId ?? '',
+            appId: data.paymentConfig?.appId ?? '',
+            enabled: data.paymentConfig?.enabled ?? false,
+            testMode: data.paymentConfig?.testMode ?? true,
+          }}
+          onSave={save}
+        />
       </div>
       <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
         Customer QR URL sample: <span className="break-all font-mono">{qrUrl}</span>
       </div>
     </section>
+  )
+}
+
+function PaymentConfigForm({
+  initialValue,
+  onSave,
+}: {
+  initialValue: PaymentConfigFormState
+  onSave: (payment: PaymentConfigFormState) => Promise<void>
+}) {
+  const [payment, setPayment] = useState(initialValue)
+
+  return (
+    <div className="grid gap-2">
+      <input value={payment.provider} onChange={(e) => setPayment({ ...payment, provider: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Provider" />
+      <input value={payment.merchantId} onChange={(e) => setPayment({ ...payment, merchantId: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Merchant ID" />
+      <input value={payment.appId} onChange={(e) => setPayment({ ...payment, appId: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="App ID" />
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={payment.enabled} onChange={(e) => setPayment({ ...payment, enabled: e.target.checked })} /> Enabled</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={payment.testMode} onChange={(e) => setPayment({ ...payment, testMode: e.target.checked })} /> Test mode</label>
+      <button onClick={() => void onSave(payment)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">Save payment config</button>
+    </div>
   )
 }
 

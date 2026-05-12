@@ -20,8 +20,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       headers?: { authorization?: string; Authorization?: string };
       user?: unknown;
     };
-    const raw =
-      req.headers?.authorization ?? req.headers?.Authorization ?? '';
+    const raw = req.headers?.authorization ?? req.headers?.Authorization ?? '';
     const bearer =
       typeof raw === 'string' && raw.startsWith('Bearer ')
         ? raw.slice(7).trim()

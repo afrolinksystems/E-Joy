@@ -121,7 +121,8 @@ export class OrderResolver {
       variables: { shopId: string },
     ) => payload.tableStatusChanged?.shopId === variables.shopId,
   })
-  tableStatusChanged(@Args('shopId') _shopId: string) {
+  tableStatusChanged(@Args('shopId') shopId: string) {
+    void shopId;
     return this.pubSub.asyncIterableIterator('tableStatusChanged');
   }
 
@@ -146,7 +147,9 @@ export class OrderResolver {
 
   /** 顾客端订单详情（按 id；不存在则返回 null） */
   @Query(() => OrderDetailModel, { nullable: true, name: 'getOrder' })
-  getOrder(@Args('id', { type: () => ID }) id: string): Promise<OrderDetailModel | null> {
+  getOrder(
+    @Args('id', { type: () => ID }) id: string,
+  ): Promise<OrderDetailModel | null> {
     return this.orderService.getOrderByIdForCustomer(id);
   }
 
@@ -157,7 +160,8 @@ export class OrderResolver {
     context: {
       req?: { user?: { shopId?: string; merchantId?: string; id?: string } };
     },
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
@@ -182,8 +186,10 @@ export class OrderResolver {
   @Mutation(() => MerchantDispatchOrderModel, { name: 'updateOrderStatus' })
   updateOrderStatus(
     @Args('id') id: string,
-    @Args('status', { type: () => MerchantOrderStatus }) status: MerchantOrderStatus,
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('status', { type: () => MerchantOrderStatus })
+    status: MerchantOrderStatus,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,

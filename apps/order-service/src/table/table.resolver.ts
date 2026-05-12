@@ -65,8 +65,10 @@ export class TableResolver {
   @UseGuards(JwtAuthGuard)
   @Mutation(() => [TableModel], { name: 'updateTablePositions' })
   updateTablePositions(
-    @Args('input', { type: () => [TablePositionInput] }) input: TablePositionInput[],
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('input', { type: () => [TablePositionInput] })
+    input: TablePositionInput[],
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
@@ -81,22 +83,30 @@ export class TableResolver {
   updateTable(
     @Args('id') id: string,
     @Args('tableNumber') tableNumber: string,
-    @Args('capacity', { type: () => Int, nullable: true }) capacity: number | undefined | null,
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('capacity', { type: () => Int, nullable: true })
+    capacity: number | undefined | null,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
   ): Promise<TableModel> {
     this.assertMerchantDispatchAccess(role, scope, 'write');
     const effectiveShopId = this.resolveMerchantShopId(shopId, currentShopId);
-    return this.tableService.updateTable(effectiveShopId, id, tableNumber, capacity);
+    return this.tableService.updateTable(
+      effectiveShopId,
+      id,
+      tableNumber,
+      capacity,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean, { name: 'deleteTable' })
   deleteTable(
     @Args('id') id: string,
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
@@ -109,7 +119,8 @@ export class TableResolver {
   @UseGuards(JwtAuthGuard)
   @Mutation(() => TableModel, { name: 'createTable' })
   createTable(
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
@@ -125,7 +136,8 @@ export class TableResolver {
     @Args('id') id: string,
     @Args('x', { type: () => Float }) x: number,
     @Args('y', { type: () => Float }) y: number,
-    @Args('shopId', { type: () => String, nullable: true }) shopId: string | undefined,
+    @Args('shopId', { type: () => String, nullable: true })
+    shopId: string | undefined,
     @CurrentUserRole() role?: string,
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,

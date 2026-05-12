@@ -1,4 +1,11 @@
-import { Field, Float, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import {
+  Field,
+  Float,
+  ID,
+  Int,
+  ObjectType,
+  registerEnumType,
+} from '@nestjs/graphql';
 
 /** Display status for floor map (OCCUPIED is derived from active orders). */
 export enum TableStatus {

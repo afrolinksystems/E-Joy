@@ -23,7 +23,9 @@ export class PaymentController {
    */
   @Post('telebirr/webhook')
   @HttpCode(200)
-  async telebirrWebhook(@Body() body: unknown): Promise<{ code: string; msg: string }> {
+  async telebirrWebhook(
+    @Body() body: unknown,
+  ): Promise<{ code: string; msg: string }> {
     try {
       await this.orderService.handleTelebirrWebhook(body);
       return { code: '0', msg: 'success' };
@@ -48,7 +50,8 @@ export class PaymentController {
     }
     const result = await this.orderService.applyMockPaymentSuccess(orderId);
     const customerOrigin =
-      process.env.CUSTOMER_WEB_ORIGIN?.replace(/\/$/, '') ?? 'http://localhost:9601';
+      process.env.CUSTOMER_WEB_ORIGIN?.replace(/\/$/, '') ??
+      'http://localhost:9601';
     const successUrl =
       process.env.MOCK_PAYMENT_SUCCESS_URL ?? `${customerOrigin}/order-success`;
     const failureUrl =

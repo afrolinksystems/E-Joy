@@ -41,7 +41,10 @@ export class ProductService {
   /**
    * List products for merchant console. By default excludes archived rows.
    */
-  async listProducts(shopId: string, category?: string): Promise<ProductModel[]> {
+  async listProducts(
+    shopId: string,
+    category?: string,
+  ): Promise<ProductModel[]> {
     const rows = await this.prisma.product.findMany({
       where: {
         shopId,
@@ -185,7 +188,10 @@ export class ProductService {
   /**
    * Soft-delete: marks product ARCHIVED (no physical delete; order history preserved).
    */
-  async archiveProduct(productId: string, shopId: string): Promise<ProductModel> {
+  async archiveProduct(
+    productId: string,
+    shopId: string,
+  ): Promise<ProductModel> {
     const current = await this.prisma.product.findFirst({
       where: { id: productId, shopId },
     });

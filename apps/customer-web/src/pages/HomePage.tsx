@@ -1,7 +1,7 @@
 import { BannerCarousel, type BannerItem } from '../components/BannerCarousel'
 
 /** 首页顶部营销 Banner（原 Mock 数据外置，便于回归对比） */
-export const homeBanners: BannerItem[] = [
+const homeBanners: BannerItem[] = [
   {
     id: 'home-1',
     title: '🔥 20% OFF on Special Tibs',

@@ -35,7 +35,12 @@ export class UploadController {
   private assertCanUpload(req: UploadRequest) {
     const role = req.user?.role?.toLowerCase();
     const scopes = req.user?.scope ?? [];
-    if (role === 'admin' || role === 'platform_admin' || role === 'manager' || scopes.includes('staff:write')) {
+    if (
+      role === 'admin' ||
+      role === 'platform_admin' ||
+      role === 'manager' ||
+      scopes.includes('staff:write')
+    ) {
       return;
     }
     throw new ForbiddenException('You do not have permission to upload images');
@@ -44,7 +49,10 @@ export class UploadController {
   @Post('image')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(imageUpload)
-  async uploadImage(@UploadedFile() file: Express.Multer.File | undefined, @Req() req: UploadRequest) {
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: UploadRequest,
+  ) {
     this.assertCanUpload(req);
     if (!file?.buffer?.length) {
       throw new BadRequestException('file is required');

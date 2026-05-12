@@ -15,6 +15,12 @@ import {
 /** Alias for Cloudinary upload API response (secure URL, public_id, etc.). */
 export type CloudinaryResponse = UploadApiResponse;
 
+function toUploadError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  return new Error('Cloudinary upload failed');
+}
+
 @Injectable()
 export class UploadService implements OnModuleInit {
   onModuleInit(): void {
@@ -31,28 +37,31 @@ export class UploadService implements OnModuleInit {
       );
     }
 
-    const folder = process.env.CLOUDINARY_UPLOAD_FOLDER?.trim() || 'ejoy-products';
+    const folder =
+      process.env.CLOUDINARY_UPLOAD_FOLDER?.trim() || 'ejoy-products';
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'image',
-        },
-        (err, result) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          if (!result) {
-            reject(new Error('Cloudinary returned an empty result'));
-            return;
-          }
-          resolve(result);
-        },
-      );
+    return new Promise<CloudinaryResponse>(
+      (resolve, reject: (reason: Error) => void) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: 'image',
+          },
+          (err, result) => {
+            if (err) {
+              reject(toUploadError(err));
+              return;
+            }
+            if (!result) {
+              reject(new Error('Cloudinary returned an empty result'));
+              return;
+            }
+            resolve(result);
+          },
+        );
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
+        streamifier.createReadStream(file.buffer).pipe(uploadStream);
+      },
+    );
   }
 }

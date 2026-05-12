@@ -20,7 +20,12 @@ export class TelebirrService {
   isConfigured(): boolean {
     const c = this.config();
     return Boolean(
-      c.apiBase && c.appId && c.appKey && c.publicKeyPem && c.shortCode && c.notifyUrl,
+      c.apiBase &&
+      c.appId &&
+      c.appKey &&
+      c.publicKeyPem &&
+      c.shortCode &&
+      c.notifyUrl,
     );
   }
 
@@ -37,7 +42,8 @@ export class TelebirrService {
       appId: process.env.TELEBIRR_APP_ID?.trim() ?? '',
       appKey: process.env.TELEBIRR_APP_KEY?.trim() ?? '',
       shortCode: process.env.TELEBIRR_SHORT_CODE?.trim() ?? '',
-      publicKeyPem: process.env.TELEBIRR_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? '',
+      publicKeyPem:
+        process.env.TELEBIRR_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? '',
       privateKeyPem:
         process.env.TELEBIRR_PRIVATE_KEY?.replace(/\\n/g, '\n') ?? '',
       notifyUrl: process.env.TELEBIRR_NOTIFY_URL?.trim() ?? '',
@@ -79,10 +85,7 @@ export class TelebirrService {
       );
     }
     const token =
-      json.token ??
-      json.access_token ??
-      json.result?.token ??
-      json.data?.token;
+      json.token ?? json.access_token ?? json.result?.token ?? json.data?.token;
     if (!token) {
       throw new Error('Fabric token missing in response');
     }
@@ -99,7 +102,7 @@ export class TelebirrService {
     }
     const key = new NodeRSA(c.publicKeyPem, 'public');
     key.setOptions({ encryptionScheme: 'pkcs1' });
-    return key.encrypt(plainUtf8, 'base64') as string;
+    return key.encrypt(plainUtf8, 'base64');
   }
 
   /**
@@ -198,7 +201,7 @@ export class TelebirrService {
     }
     const key = new NodeRSA(c.privateKeyPem, 'private');
     key.setOptions({ encryptionScheme: 'pkcs1' });
-    return key.decrypt(encryptedBase64, 'utf8') as string;
+    return key.decrypt(encryptedBase64, 'utf8');
   }
 
   /**
@@ -206,7 +209,13 @@ export class TelebirrService {
    */
   verifyWebhookEnvelopeSignature(env: TelebirrWebhookEnvelope): boolean {
     const c = this.config();
-    if (!env.sign || !env.appid || !env.timestamp || !env.nonce || !env.biz_content) {
+    if (
+      !env.sign ||
+      !env.appid ||
+      !env.timestamp ||
+      !env.nonce ||
+      !env.biz_content
+    ) {
       return false;
     }
     const expected = createHmac('sha256', c.appKey)

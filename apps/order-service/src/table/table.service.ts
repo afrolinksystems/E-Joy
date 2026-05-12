@@ -26,7 +26,10 @@ export class TableService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Single table for subscription payloads (same OCCUPIED derivation as getTables). */
-  async getTableById(shopId: string, tableId: string): Promise<TableModel | null> {
+  async getTableById(
+    shopId: string,
+    tableId: string,
+  ): Promise<TableModel | null> {
     const row = await this.prisma.diningTable.findFirst({
       where: { id: tableId, shopId },
     });

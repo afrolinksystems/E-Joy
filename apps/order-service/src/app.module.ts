@@ -53,7 +53,7 @@ import { TelebirrService } from './payment/telebirr.service';
       subscriptions: {
         'graphql-ws': {
           // graphql-ws Context; attach headers so JwtAuthGuard sees demo / JWT on subscriptions.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- graphql-ws Context generic differs across versions
+
           onConnect: (ctx: any) => {
             const raw =
               (ctx.connectionParams?.['Authorization'] as string | undefined) ??

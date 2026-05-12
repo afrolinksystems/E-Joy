@@ -218,8 +218,12 @@ describe('StaffService', () => {
     };
     const svc = new StaffService(prisma as never, {} as never);
 
-    await expect(svc.authenticateStaff('0911000000', 'wrong')).resolves.toBeNull();
-    await expect(svc.authenticateStaff('0911000000', 'secret123')).resolves.toMatchObject({
+    await expect(
+      svc.authenticateStaff('0911000000', 'wrong'),
+    ).resolves.toBeNull();
+    await expect(
+      svc.authenticateStaff('0911000000', 'secret123'),
+    ).resolves.toMatchObject({
       id: 'staff_1',
       shopId: 'shop_1',
     });
@@ -236,6 +240,8 @@ describe('StaffService', () => {
     };
     const svc = new StaffService(prisma as never, {} as never);
 
-    await expect(svc.authenticateStaff('0911000000', 'secret123')).resolves.toBeNull();
+    await expect(
+      svc.authenticateStaff('0911000000', 'secret123'),
+    ).resolves.toBeNull();
   });
 });
