@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 
 export const CUSTOMER_THEME_PRESETS = [
   'ejoy-default',
+  'amber',
   'light-green',
   'mono',
 ] as const

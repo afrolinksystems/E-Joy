@@ -11,7 +11,7 @@ import {
 import { uploadPublicImage } from '../../lib/upload'
 import { useAdminSession } from '../../lib/adminSession'
 
-type ThemePreset = 'ejoy-default' | 'light-green' | 'mono'
+type ThemePreset = 'ejoy-default' | 'amber' | 'light-green' | 'mono'
 
 type FormState = {
   name: string
@@ -43,6 +43,7 @@ type ThemeTokenMap = Record<ThemeFieldKey, string>
 
 const THEME_PRESETS: Array<{ label: string; value: ThemePreset }> = [
   { label: 'E-Joy Default', value: 'ejoy-default' },
+  { label: 'Amber', value: 'amber' },
   { label: 'Light Green', value: 'light-green' },
   { label: 'Mono', value: 'mono' },
 ]
@@ -80,6 +81,22 @@ const PRESET_TOKENS: Record<ThemePreset, ThemeTokenMap> = {
     mutedForeground: '#767676',
     border: '#e8e3da',
     ring: '#d29a31',
+  },
+  amber: {
+    primary: '#e3b14e',
+    primaryForeground: '#000000',
+    secondary: '#f2f2f6',
+    secondaryForeground: '#7b5a1f',
+    accent: '#fdf2d4',
+    accentForeground: '#895216',
+    background: '#ffffff',
+    foreground: '#454545',
+    card: '#ffffff',
+    cardForeground: '#454545',
+    muted: '#faf9fc',
+    mutedForeground: '#7c7787',
+    border: '#e7e4ec',
+    ring: '#e3b14e',
   },
   'light-green': {
     primary: '#7ac943',
@@ -157,7 +174,7 @@ function mapShopToForm(s: ShopConfigRow): FormState {
 }
 
 function isThemePreset(value: string | null | undefined): value is ThemePreset {
-  return value === 'ejoy-default' || value === 'light-green' || value === 'mono'
+  return value === 'ejoy-default' || value === 'amber' || value === 'light-green' || value === 'mono'
 }
 
 function mapOverridesToForm(
@@ -403,31 +420,14 @@ export function ShopSettings() {
               </select>
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {THEME_FIELDS.map((field) => {
                 const fallback = PRESET_TOKENS[form.customerThemePreset][field.key]
                 const currentValue = form.customerThemeOverrides[field.key].trim()
 
                 return (
                   <div key={field.key} className="rounded-xl border border-slate-200 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-slate-700">{field.label}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            customerThemeOverrides: {
-                              ...f.customerThemeOverrides,
-                              [field.key]: '',
-                            },
-                          }))
-                        }
-                        className="text-xs text-slate-500 underline hover:text-slate-800"
-                      >
-                        Use preset
-                      </button>
-                    </div>
+                    <div className="mb-2 text-sm font-medium text-slate-700">{field.label}</div>
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
@@ -455,8 +455,24 @@ export function ShopSettings() {
                           }))
                         }
                         placeholder={fallback}
-                        className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
+                        maxLength={7}
+                        className="w-[92px] rounded-lg border border-slate-300 px-2.5 py-2 font-mono text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
                       />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            customerThemeOverrides: {
+                              ...f.customerThemeOverrides,
+                              [field.key]: '',
+                            },
+                          }))
+                        }
+                        className="text-xs text-slate-500 underline hover:text-slate-800"
+                      >
+                        Use preset
+                      </button>
                     </div>
                   </div>
                 )
