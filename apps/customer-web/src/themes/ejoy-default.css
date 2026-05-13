@@ -1,0 +1,34 @@
+[data-theme="ejoy-default"] {
+  --background: #f4f4f4;
+  --foreground: #1f1f1f;
+  --card: #ffffff;
+  --card-foreground: #1f1f1f;
+  --popover: #ffffff;
+  --popover-foreground: #1f1f1f;
+  --primary: #d29a31;
+  --primary-foreground: #ffffff;
+  --secondary: #fff5df;
+  --secondary-foreground: #6b4a15;
+  --muted: #eeeeee;
+  --muted-foreground: #767676;
+  --accent: #b77f1e;
+  --accent-foreground: #ffffff;
+  --destructive: #d84a3a;
+  --border: #e8e3da;
+  --input: #e8e3da;
+  --ring: #d29a31;
+  --chart-1: #d29a31;
+  --chart-2: #b77f1e;
+  --chart-3: #f5d397;
+  --chart-4: #6b4a15;
+  --chart-5: #f9e7c0;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f1f1f;
+  --sidebar-primary: #d29a31;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff5df;
+  --sidebar-accent-foreground: #6b4a15;
+  --sidebar-border: #e8e3da;
+  --sidebar-ring: #d29a31;
+  --radius: 0.875rem;
+}

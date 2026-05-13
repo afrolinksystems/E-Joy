@@ -1,8 +1,8 @@
 import { gql } from '@apollo/client'
 
-export const SHOP = gql`
-  query Shop($id: String!) {
-    shop(id: $id) {
+export const CUSTOMER_SHOP = gql`
+  query CustomerShop($shopId: String!) {
+    customerShop(shopId: $shopId) {
       id
       name
       description
@@ -30,37 +30,7 @@ export const SHOP = gql`
   }
 `
 
-export const UPDATE_SHOP = gql`
-  mutation UpdateShop($shopId: String, $input: UpdateShopInput!) {
-    updateShop(shopId: $shopId, input: $input) {
-      id
-      name
-      description
-      contactPhone
-      logoUrl
-      customerThemePreset
-      customerThemeOverrides {
-        primary
-        primaryForeground
-        secondary
-        secondaryForeground
-        accent
-        accentForeground
-        background
-        foreground
-        card
-        cardForeground
-        muted
-        mutedForeground
-        border
-        ring
-      }
-      active
-    }
-  }
-`
-
-export type ShopThemeOverrides = {
+export type CustomerShopThemeOverrides = {
   primary?: string | null
   primaryForeground?: string | null
   secondary?: string | null
@@ -77,13 +47,13 @@ export type ShopThemeOverrides = {
   ring?: string | null
 }
 
-export type ShopConfigRow = {
+export type CustomerShopRow = {
   id: string
   name: string
   description?: string | null
   contactPhone?: string | null
   logoUrl?: string | null
   customerThemePreset?: string | null
-  customerThemeOverrides?: ShopThemeOverrides | null
+  customerThemeOverrides?: CustomerShopThemeOverrides | null
   active: boolean
 }

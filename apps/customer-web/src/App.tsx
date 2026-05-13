@@ -70,10 +70,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { CREATE_ORDER_MUTATION } from './graphql/createOrder'
+import { CUSTOMER_SHOP, type CustomerShopRow } from './graphql/customerShop'
 import { GET_ORDERS_QUERY, type GetOrdersData } from './graphql/getOrders'
 import { SHOP_MENU, type ShopMenuProduct } from './graphql/shopMenu'
 import { useTableSession } from './hooks/useTableSession'
-import { getCustomerThemeVars } from './lib/customerTheme'
+import { getCustomerThemeVars, resolveCustomerThemePreset } from './lib/customerTheme'
 import { buildMockTelebirrRedirectUrl, getOrderServiceHttpOrigin } from './lib/mockTelebirrRedirectUrl'
 import { cn } from './lib/utils'
 import {
@@ -191,6 +192,15 @@ export default function App() {
     },
   )
 
+  const { data: shopData } = useQuery<{ customerShop: CustomerShopRow | null }>(
+    CUSTOMER_SHOP,
+    {
+      variables: { shopId },
+      skip: !hasTableSession,
+      fetchPolicy: 'cache-and-network',
+    },
+  )
+
   const {
     data: ordersData,
     loading: ordersLoading,
@@ -215,7 +225,10 @@ export default function App() {
   }, [clearCart])
 
   const menuRows = data?.shopMenu ?? []
-  const shopName = 'E-Joy Restaurant'
+  const shop = shopData?.customerShop ?? null
+  const shopName = shop?.name?.trim() || 'E-Joy Restaurant'
+  const customerThemePreset = resolveCustomerThemePreset(shop?.customerThemePreset)
+  const customerThemeVars = getCustomerThemeVars(shop?.customerThemeOverrides)
   const categories = useMemo(() => {
     const values = menuRows.map((row) => row.category || 'Menu')
     return ['All', ...Array.from(new Set(values))]
@@ -291,7 +304,11 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-svh bg-background text-foreground" style={getCustomerThemeVars()}>
+    <main
+      className="min-h-svh bg-background text-foreground"
+      data-theme={customerThemePreset}
+      style={customerThemeVars}
+    >
       <div className="relative mx-auto min-h-svh w-full max-w-[480px] overflow-hidden bg-background">
         {activeTab === 'home' ? (
           <HomeScreen shopName={shopName} onStart={() => setActiveTab('menu')} />

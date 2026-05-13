@@ -1,65 +1,55 @@
 import type { CSSProperties } from 'react'
 
-export type CustomerThemeInput = {
-  primary?: string
-  primaryForeground?: string
-  secondary?: string
-  secondaryForeground?: string
-  accent?: string
-  accentForeground?: string
-  background?: string
-  foreground?: string
-  card?: string
-  cardForeground?: string
-  muted?: string
-  mutedForeground?: string
-  border?: string
-  ring?: string
-  logoUrl?: string | null
-}
+export const CUSTOMER_THEME_PRESETS = [
+  'ejoy-default',
+  'light-green',
+  'mono',
+] as const
 
-const EJOY_THEME: Required<Omit<CustomerThemeInput, 'logoUrl'>> = {
-  primary: '#d29a31',
-  primaryForeground: '#ffffff',
-  secondary: '#fff5df',
-  secondaryForeground: '#6b4a15',
-  accent: '#b77f1e',
-  accentForeground: '#ffffff',
-  background: '#f4f4f4',
-  foreground: '#1f1f1f',
-  card: '#ffffff',
-  cardForeground: '#1f1f1f',
-  muted: '#eeeeee',
-  mutedForeground: '#767676',
-  border: '#e8e3da',
-  ring: '#d29a31',
+export type CustomerThemePreset = (typeof CUSTOMER_THEME_PRESETS)[number]
+
+export type CustomerThemeInput = {
+  primary?: string | null
+  primaryForeground?: string | null
+  secondary?: string | null
+  secondaryForeground?: string | null
+  accent?: string | null
+  accentForeground?: string | null
+  background?: string | null
+  foreground?: string | null
+  card?: string | null
+  cardForeground?: string | null
+  muted?: string | null
+  mutedForeground?: string | null
+  border?: string | null
+  ring?: string | null
 }
 
 type ThemeStyle = CSSProperties & Record<`--${string}`, string>
 
-export function getCustomerThemeVars(theme?: CustomerThemeInput): ThemeStyle {
-  const merged = { ...EJOY_THEME, ...theme }
-
-  return {
-    '--background': merged.background,
-    '--foreground': merged.foreground,
-    '--card': merged.card,
-    '--card-foreground': merged.cardForeground,
-    '--popover': merged.card,
-    '--popover-foreground': merged.cardForeground,
-    '--primary': merged.primary,
-    '--primary-foreground': merged.primaryForeground,
-    '--secondary': merged.secondary,
-    '--secondary-foreground': merged.secondaryForeground,
-    '--muted': merged.muted,
-    '--muted-foreground': merged.mutedForeground,
-    '--accent': merged.accent,
-    '--accent-foreground': merged.accentForeground,
-    '--border': merged.border,
-    '--input': merged.border,
-    '--ring': merged.ring,
-    '--radius': '0.875rem',
-  }
+export function resolveCustomerThemePreset(
+  preset?: string | null,
+): CustomerThemePreset {
+  return CUSTOMER_THEME_PRESETS.includes(preset as CustomerThemePreset)
+    ? (preset as CustomerThemePreset)
+    : 'ejoy-default'
 }
 
-export const defaultCustomerTheme = EJOY_THEME
+export function getCustomerThemeVars(theme?: CustomerThemeInput | null): ThemeStyle {
+  if (!theme) {
+    return {}
+  }
+
+  const entries = Object.entries(theme).flatMap(([key, value]) => {
+    if (typeof value !== 'string') return []
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    return [[toCssVarName(key), trimmed] as const]
+  })
+
+  return Object.fromEntries(entries) as ThemeStyle
+}
+
+function toCssVarName(key: string): `--${string}` {
+  return `--${key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)}`
+}

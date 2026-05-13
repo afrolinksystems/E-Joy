@@ -45,10 +45,14 @@ import {
   ProductModel,
   TopDishModel,
 } from './admin.types';
-import { ShopModel } from '../shop/shop.types';
+import {
+  CustomerThemeOverridesModel,
+  ShopModel,
+} from '../shop/shop.types';
 import {
   BannerStatusInput,
   ApproveShopApplicationInput,
+  CustomerThemeOverridesInput,
   CreateBannerInput,
   CreateShopApplicationInput,
   CreatePlatformCouponInput,
@@ -1146,6 +1150,14 @@ export class AdminService {
       throw new NotFoundException(`Shop not found: ${shopId}`);
     }
     const name = input.name !== undefined ? input.name.trim() : undefined;
+    const customerThemePreset =
+      input.customerThemePreset !== undefined
+        ? input.customerThemePreset.trim() || null
+        : undefined;
+    const customerThemeOverrides =
+      input.customerThemeOverrides !== undefined
+        ? this.normalizeCustomerThemeOverrides(input.customerThemeOverrides)
+        : undefined;
     if (name !== undefined && name === '') {
       throw new BadRequestException('name cannot be empty');
     }
@@ -1163,6 +1175,17 @@ export class AdminService {
           ? {
               logoUrl:
                 input.logoUrl.trim() === '' ? null : input.logoUrl.trim(),
+            }
+          : {}),
+        ...(customerThemePreset !== undefined
+          ? { customerThemePreset }
+          : {}),
+        ...(customerThemeOverrides !== undefined
+          ? {
+              customerThemeOverridesJson:
+                customerThemeOverrides === null
+                  ? null
+                  : JSON.stringify(customerThemeOverrides),
             }
           : {}),
         ...(input.isOpen !== undefined ? { active: input.isOpen } : {}),
@@ -1183,8 +1206,51 @@ export class AdminService {
       contactPhone:
         typeof row.contactPhone === 'string' ? row.contactPhone : undefined,
       logoUrl: typeof row.logoUrl === 'string' ? row.logoUrl : undefined,
+      customerThemePreset:
+        typeof row.customerThemePreset === 'string'
+          ? row.customerThemePreset
+          : undefined,
+      customerThemeOverrides: this.parseCustomerThemeOverrides(
+        row.customerThemeOverridesJson,
+      ),
       active: Boolean(row.active),
     };
+  }
+
+  private normalizeCustomerThemeOverrides(
+    input: CustomerThemeOverridesInput,
+  ): CustomerThemeOverridesModel | null {
+    const entries = Object.entries(input).flatMap(([key, value]) => {
+      if (typeof value !== 'string') return [];
+      const trimmed = value.trim();
+      return trimmed ? [[key, trimmed] as const] : [];
+    });
+    if (!entries.length) {
+      return null;
+    }
+    return Object.fromEntries(entries) as CustomerThemeOverridesModel;
+  }
+
+  private parseCustomerThemeOverrides(
+    raw: unknown,
+  ): CustomerThemeOverridesModel | undefined {
+    if (typeof raw !== 'string' || raw.trim() === '') {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const entries = Object.entries(parsed).flatMap(([key, value]) => {
+        if (typeof value !== 'string') return [];
+        const trimmed = value.trim();
+        return trimmed ? [[key, trimmed] as const] : [];
+      });
+      if (!entries.length) {
+        return undefined;
+      }
+      return Object.fromEntries(entries) as CustomerThemeOverridesModel;
+    } catch {
+      return undefined;
+    }
   }
 
   private composeScopeType(

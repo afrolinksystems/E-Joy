@@ -171,6 +171,8 @@ model Shop {
   description  String?
   contactPhone String?
   logoUrl      String?
+  customerThemePreset        String?
+  customerThemeOverridesJson String?
   active       Boolean       @default(true)
   updatedBy    String?
   createdAt    DateTime      @default(now())
