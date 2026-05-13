@@ -4,6 +4,7 @@ import { ApolloProvider } from '@apollo/client/react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { Toaster } from './components/ui/sonner'
 import { apolloClient } from './lib/apollo'
 import { OrderDetailRoute } from './routes/OrderDetailRoute'
 import { MockTelebirrRoute } from './routes/MockTelebirrRoute'
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/orders/:orderId" element={<OrderDetailRoute />} />
           <Route path="/*" element={<App />} />
         </Routes>
+        <Toaster position="top-center" richColors closeButton />
       </BrowserRouter>
     </ApolloProvider>
   </StrictMode>,

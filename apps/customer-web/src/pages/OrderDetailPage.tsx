@@ -1,9 +1,30 @@
 import { useQuery } from '@apollo/client/react'
 import { format } from 'date-fns'
-import { ArrowLeft, Copy, Loader2, ReceiptText } from 'lucide-react'
+import { ArrowLeft, Copy, ReceiptText } from 'lucide-react'
+import { toast } from 'sonner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
 import { GET_ORDER_QUERY, type OrderDetailData } from '../graphql/getOrder'
+import { getCustomerThemeVars } from '../lib/customerTheme'
 import { buildMockTelebirrRedirectUrl } from '../lib/mockTelebirrRedirectUrl'
-import { useToastStore } from '../store/useToastStore'
 
 const PLACEHOLDER_IMG =
   'https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&w=320&q=80'
@@ -42,10 +63,21 @@ function statusLabel(status: string): string {
   return 'Order received'
 }
 
+function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  const normalized = status.toUpperCase()
+  if (normalized === 'CANCELLED') return 'destructive'
+  if (normalized === 'COMPLETED' || normalized === 'PAID') return 'default'
+  if (orderNeedsPayment(status)) return 'secondary'
+  return 'outline'
+}
+
 function copyToClipboard(text: string): void {
-  void navigator.clipboard.writeText(text).catch(() => {
-    window.prompt('Copy order number:', text)
-  })
+  void navigator.clipboard.writeText(text).then(
+    () => toast.success('Order number copied'),
+    () => {
+      window.prompt('Copy order number:', text)
+    },
+  )
 }
 
 export default function OrderDetailPage({ orderId, onBack }: OrderDetailPageProps) {
@@ -63,17 +95,15 @@ export default function OrderDetailPage({ orderId, onBack }: OrderDetailPageProp
     try {
       window.location.href = buildMockTelebirrRedirectUrl(order.id, order.totalAmount)
     } catch (err) {
-      useToastStore
-        .getState()
-        .show(err instanceof Error ? err.message : 'Telebirr payment failed', 'error')
+      toast.error(err instanceof Error ? err.message : 'Telebirr payment failed')
     }
   }
 
   if (loading) {
     return (
-      <main className="detail-page">
-        <div className="detail-loading">
-          <Loader2 size={22} className="spin" />
+      <main className="mx-auto grid min-h-svh max-w-[480px] place-items-center bg-background text-foreground" style={getCustomerThemeVars()}>
+        <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+          <Spinner />
           Loading order
         </div>
       </main>
@@ -82,94 +112,130 @@ export default function OrderDetailPage({ orderId, onBack }: OrderDetailPageProp
 
   if (error || !order) {
     return (
-      <main className="detail-page">
-        <header className="detail-topbar">
-          <button type="button" className="icon-circle" onClick={onBack} aria-label="Back">
-            <ArrowLeft size={20} />
-          </button>
-          <h1>Order</h1>
-          <span />
-        </header>
-        <section className="empty-panel detail-error">
-          <ReceiptText size={42} />
-          <h2>Order not found</h2>
-          <p>{error?.message ?? 'This order could not be loaded.'}</p>
-          <button type="button" className="primary-pill" onClick={() => void refetch()}>
-            Retry
-          </button>
+      <main className="mx-auto min-h-svh max-w-[480px] bg-background pb-28 text-foreground" style={getCustomerThemeVars()}>
+        <DetailTopbar title="Order" onBack={onBack} />
+        <section className="p-4">
+          <Empty className="min-h-[70svh] bg-card">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ReceiptText />
+              </EmptyMedia>
+              <EmptyTitle className="text-lg">Order not found</EmptyTitle>
+              <EmptyDescription>{error?.message ?? 'This order could not be loaded.'}</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button type="button" className="h-11 rounded-full" onClick={() => void refetch()}>
+                Retry
+              </Button>
+            </EmptyContent>
+          </Empty>
         </section>
       </main>
     )
   }
 
   return (
-    <main className="detail-page">
-      <header className="detail-topbar">
-        <button type="button" className="icon-circle" onClick={onBack} aria-label="Back">
-          <ArrowLeft size={20} />
-        </button>
-        <h1>Order Status</h1>
-        <span />
-      </header>
+    <main className="mx-auto min-h-svh max-w-[480px] bg-background pb-[calc(112px+env(safe-area-inset-bottom))] text-foreground" style={getCustomerThemeVars()}>
+      <DetailTopbar title="Order Status" onBack={onBack} />
 
-      <section className="detail-status-card">
-        <span className="status-pill">{statusLabel(order.status)}</span>
-        <h2>{order.shopName}</h2>
-        <p>{order.tableName ? `Table ${order.tableName}` : 'Dine-in order'}</p>
-        <div className="order-number-row">
-          <span>{order.orderNo}</span>
-          <button type="button" onClick={() => copyToClipboard(order.orderNo)}>
-            <Copy size={14} />
-            Copy
-          </button>
-        </div>
-      </section>
+      <div className="flex flex-col gap-3 p-3">
+        <Card>
+          <CardHeader>
+            <Badge className="w-fit" variant={statusVariant(order.status)}>
+              {statusLabel(order.status)}
+            </Badge>
+            <CardTitle className="text-[21px] font-black">{order.shopName}</CardTitle>
+            <CardDescription>{order.tableName ? `Table ${order.tableName}` : 'Dine-in order'}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-muted p-3">
+              <span className="min-w-0 break-words font-mono text-xs text-muted-foreground">{order.orderNo}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => copyToClipboard(order.orderNo)}>
+                <Copy data-icon="inline-start" />
+                Copy
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-      <section className="detail-card">
-        <h2>Items</h2>
-        <div className="detail-item-list">
-          {order.items.map((item, index) => (
-            <article key={`${order.id}-${index}`} className="detail-item">
-              <img src={resolveProductImageUrl(item.product.imageUrl)} alt="" />
-              <div>
-                <h3>{item.product.name}</h3>
-                <p>x{item.quantity}</p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[17px] font-black">Items</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-0">
+            {order.items.map((item, index) => (
+              <div key={`${order.id}-${index}`}>
+                <article className="grid grid-cols-[62px_minmax(0,1fr)_auto] items-center gap-3 py-3">
+                  <img
+                    src={resolveProductImageUrl(item.product.imageUrl)}
+                    alt=""
+                    className="size-[62px] rounded-lg bg-muted object-cover"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="truncate text-[15px] font-black">{item.product.name}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">x{item.quantity}</p>
+                  </div>
+                  <strong className="whitespace-nowrap text-sm font-black">{formatBirr(item.priceAtTime * item.quantity)}</strong>
+                </article>
+                {index < order.items.length - 1 ? <Separator /> : null}
               </div>
-              <strong>{formatBirr(item.priceAtTime * item.quantity)}</strong>
-            </article>
-          ))}
-        </div>
-      </section>
+            ))}
+          </CardContent>
+        </Card>
 
-      <section className="detail-card detail-meta">
-        <h2>Details</h2>
-        <dl>
-          <div>
-            <dt>Placed</dt>
-            <dd>{format(new Date(order.createdAt), 'MMM d, HH:mm')}</dd>
-          </div>
-          <div>
-            <dt>Payment</dt>
-            <dd>Telebirr</dd>
-          </div>
-          <div>
-            <dt>Total</dt>
-            <dd>{formatBirr(order.totalAmount)}</dd>
-          </div>
-        </dl>
-      </section>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[17px] font-black">Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-3">
+              <DetailMeta label="Placed" value={format(new Date(order.createdAt), 'MMM d, HH:mm')} />
+              <DetailMeta label="Payment" value="Telebirr" />
+              <DetailMeta label="Total" value={formatBirr(order.totalAmount)} />
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
 
       {needsPayment ? (
-        <footer className="detail-paybar">
-          <div>
-            <span>Total</span>
-            <strong>{formatBirr(order.totalAmount)}</strong>
+        <footer className="fixed bottom-0 left-1/2 z-20 grid w-[min(480px,100vw)] -translate-x-1/2 grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] items-center gap-3 border-t bg-card/95 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_-14px_30px_rgba(20,20,20,0.08)] backdrop-blur">
+          <div className="min-w-0">
+            <span className="block text-xs text-muted-foreground">Total</span>
+            <strong className="mt-0.5 block text-[17px] font-black">{formatBirr(order.totalAmount)}</strong>
           </div>
-          <button type="button" className="pay-button" onClick={payWithTelebirr}>
+          <Button type="button" className="min-h-12 rounded-full font-black" onClick={payWithTelebirr}>
             Pay with Telebirr
-          </button>
+          </Button>
         </footer>
-      ) : null}
+      ) : (
+        <div className="px-3">
+          <Alert>
+            <AlertTitle>Payment status</AlertTitle>
+            <AlertDescription>This order does not need payment action right now.</AlertDescription>
+          </Alert>
+        </div>
+      )}
     </main>
+  )
+}
+
+function DetailTopbar({ onBack, title }: { onBack: () => void; title: string }) {
+  return (
+    <header className="sticky top-0 z-10 grid grid-cols-[44px_1fr_44px] items-center gap-2 bg-background/95 px-3 py-3 pt-[calc(12px+env(safe-area-inset-top))] backdrop-blur">
+      <Button type="button" variant="ghost" size="icon-lg" className="rounded-full" onClick={onBack} aria-label="Back">
+        <ArrowLeft />
+      </Button>
+      <h1 className="text-center text-[18px] font-black">{title}</h1>
+      <span />
+    </header>
+  )
+}
+
+function DetailMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="m-0 text-right font-bold">{value}</dd>
+    </div>
   )
 }
