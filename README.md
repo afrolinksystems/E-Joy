@@ -1,6 +1,6 @@
 # E-Joy
 
-E-Joy is a monorepo for a restaurant ordering platform. It includes customer ordering, merchant operations, platform administration, payments, uploads, reporting, and local infrastructure for development.
+E-Joy is a pnpm monorepo for a restaurant ordering platform. It includes customer ordering, merchant operations, platform administration, payments, uploads, reporting, and local infrastructure for development.
 
 ## Tech Stack
 
@@ -11,53 +11,34 @@ E-Joy is a monorepo for a restaurant ordering platform. It includes customer ord
 - Local infrastructure: Docker Compose with PostgreSQL, Redis, Kafka, and Meilisearch
 - Testing/tooling: Jest, ESLint, TypeScript
 
-## Architecture
-
-The repository is organized as independent apps inside `apps/`, with shared local infrastructure at the repo root.
+## Apps
 
 - `apps/order-service` - Core NestJS backend. Owns GraphQL APIs, Prisma schema, order lifecycle, admin operations, payments, uploads, observability checks, and seed scripts.
 - `apps/customer-web` - Customer ordering experience for browsing menus, cart/checkout, payment flow, and order history.
 - `apps/admin-web` - Merchant/admin dashboard for products, tables, staff, orders, receipts, reports, and shop settings.
-- `apps/super-admin-web` - Platform-level administration app for managing shops and higher-level operational views.
+- `apps/super-admin-web` - Platform-level administration app for managing shops and operational views.
 - `apps/mawa-web` - Public Mawa web experience connected to the ordering backend.
-- `docker-compose.yml` - Local development services and database bootstrap support.
-
-At runtime, the frontend apps talk to `order-service` over GraphQL. The backend persists data in PostgreSQL through Prisma, uses Redis/Kafka where applicable for operational flows, and exposes static upload assets from the service.
 
 ## Prerequisites
 
 - Node.js `>=22.12.0`
-- pnpm `>=10`
-- Docker + Docker Compose
+- pnpm `10.33.0` through Corepack
+- Docker Desktop or Docker Engine with Docker Compose
 
-The repo includes `.nvmrc` and a pinned pnpm version in `package.json`.
+The repo pins pnpm in `package.json` with `"packageManager": "pnpm@10.33.0"`. Use Corepack instead of installing a random global pnpm version.
 
-## Clone And Install
+## Fresh Local Setup
+
+From a clean clone:
 
 ```bash
 git clone <repo-url>
 cd E-Joy
 corepack enable
+corepack prepare pnpm@10.33.0 --activate
 pnpm install
-```
-
-## Start Local Development
-
-Start the local infrastructure:
-
-```bash
-docker compose up -d
-```
-
-Initialize or refresh the local database schema, Prisma client, and seed data:
-
-```bash
+docker compose up -d postgres redis kafka meilisearch
 docker compose run --rm prisma-init
-```
-
-Start all development apps through Turbo:
-
-```bash
 pnpm dev
 ```
 
@@ -68,6 +49,50 @@ Default local URLs:
 - Admin web: `http://localhost:9603`
 - Super admin web: `http://localhost:9604`
 - Mawa web: `http://localhost:9605`
+
+## Database, Prisma, And Seed Data
+
+`docker compose run --rm prisma-init` waits for PostgreSQL and then runs these backend setup steps:
+
+```bash
+pnpm --filter order-service exec prisma db push
+pnpm --filter order-service exec prisma generate
+pnpm --filter order-service run db:seed
+```
+
+The seed script creates local demo data, including:
+
+- Shop ID: `test-shop-001`
+- Manager phone: `0911000000`
+- Manager password: `Admin@123456`
+- Platform owner identifier: `owner@ejoy.local`
+- Platform owner password: `Owner@123456`
+- Demo products: Kitfo, Tibs, Shiro, Injera Firfir
+- Demo dining tables for the floor/table views
+
+To rerun only the seed script after the database already exists:
+
+```bash
+pnpm --filter order-service run db:seed
+```
+
+To refresh the schema, regenerate Prisma Client, and reseed together:
+
+```bash
+docker compose run --rm prisma-init
+```
+
+For local host commands, the backend reads `apps/order-service/.env`:
+
+```bash
+DATABASE_URL=postgresql://ejoy:ejoy123@127.0.0.1:5433/ejoy
+```
+
+Inside Docker Compose, `prisma-init` uses the Docker network hostname instead:
+
+```bash
+DATABASE_URL=postgresql://ejoy:ejoy123@postgres:5432/ejoy
+```
 
 ## Run One App
 
@@ -86,7 +111,25 @@ pnpm --filter mawa-web run dev
 - Kafka: `localhost:9094`
 - Meilisearch: `http://localhost:7700`
 
-`prisma-init` runs the backend Prisma setup in Docker after PostgreSQL is healthy.
+Start all infrastructure:
+
+```bash
+docker compose up -d
+```
+
+Stop infrastructure without deleting database data:
+
+```bash
+docker compose down
+```
+
+Delete local database, Kafka, and Meilisearch volumes when you need a completely fresh environment:
+
+```bash
+docker compose down -v
+docker compose up -d postgres redis kafka meilisearch
+docker compose run --rm prisma-init
+```
 
 ## Common Commands
 
@@ -108,12 +151,56 @@ pnpm --filter customer-web run build
 
 ## Troubleshooting
 
-If database tables are missing, rerun:
+### `Cannot find module '/workspace/apps/order-service/node_modules/prisma/build/index.js'`
+
+This means the `prisma-init` Docker container can see the repo but cannot see installed pnpm dependencies. Run the host setup first:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.33.0 --activate
+pnpm install
+docker compose run --rm prisma-init
+```
+
+`prisma-init` does not run `pnpm install` for you because it bind-mounts the repo into a Linux container. Installing dependencies in that container can rewrite `node_modules` for Linux and break host development on Windows.
+
+### Corepack Asks To Download pnpm
+
+This is expected the first time a machine or Docker container activates the pinned pnpm version:
+
+```text
+Corepack is about to download ... pnpm-10.33.0.tgz
+```
+
+On the host, answer yes or run this once before other commands:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.33.0 --activate
+```
+
+The Docker `prisma-init` service sets `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` and prepares pnpm non-interactively.
+
+### Tables Or Prisma Client Are Missing
+
+Run:
 
 ```bash
 docker compose run --rm prisma-init
 ```
 
-If a frontend does not pick up configuration changes, restart its Vite dev server.
+This pushes the Prisma schema, regenerates Prisma Client, and seeds demo data.
 
-If the backend cannot connect to PostgreSQL, confirm Docker is running and the local database is available on `localhost:5433`.
+### Backend Cannot Connect To PostgreSQL
+
+Confirm Docker is running and PostgreSQL is healthy:
+
+```bash
+docker compose ps postgres
+```
+
+For host/local dev, use `127.0.0.1:5433`. For commands running inside Docker Compose, use `postgres:5432`.
+
+### Frontend Does Not Pick Up Changes
+
+Restart the relevant Vite dev server.

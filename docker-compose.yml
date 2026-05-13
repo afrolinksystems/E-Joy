@@ -25,13 +25,14 @@ services:
     environment:
       # Use docker network hostname `postgres` (NOT localhost)
       DATABASE_URL: postgresql://ejoy:ejoy123@postgres:5432/ejoy
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     volumes:
       - ./:/workspace
     command:
       [
         "sh",
         "-lc",
-        "corepack enable && pnpm --filter order-service exec prisma db push && pnpm --filter order-service exec prisma generate && pnpm --filter order-service run db:seed",
+        "corepack enable && corepack prepare pnpm@10.33.0 --activate && if [ ! -f apps/order-service/node_modules/prisma/build/index.js ]; then echo 'Dependencies are missing. Run corepack enable, corepack prepare pnpm@10.33.0 --activate, and pnpm install on the host before docker compose run --rm prisma-init.'; exit 1; fi && pnpm --filter order-service exec prisma db push && pnpm --filter order-service exec prisma generate && pnpm --filter order-service run db:seed",
       ]
   redis:
     image: redis:7.4-alpine
