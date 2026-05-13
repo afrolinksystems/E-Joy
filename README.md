@@ -39,6 +39,7 @@ corepack prepare pnpm@10.33.0 --activate
 pnpm install
 docker compose up -d postgres redis kafka meilisearch
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 pnpm dev
 ```
 
@@ -80,7 +81,10 @@ To refresh the schema, regenerate Prisma Client, and reseed together:
 
 ```bash
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 ```
+
+Run the host `prisma:generate` command after Docker init on Windows/macOS. The Docker init container prepares the database and also generates Prisma inside the container, but the host TypeScript server and `pnpm dev` need a generated client available from the host `node_modules` layout too.
 
 For local host commands, the backend reads `apps/order-service/.env`:
 
@@ -145,6 +149,7 @@ Package-scoped examples:
 ```bash
 pnpm --filter order-service run test
 pnpm --filter order-service run type-check
+pnpm --filter order-service run prisma:generate
 pnpm --filter admin-web run lint
 pnpm --filter customer-web run build
 ```
@@ -160,6 +165,7 @@ corepack enable
 corepack prepare pnpm@10.33.0 --activate
 pnpm install
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 ```
 
 `prisma-init` does not run `pnpm install` for you because it bind-mounts the repo into a Linux container. Installing dependencies in that container can rewrite `node_modules` for Linux and break host development on Windows.
@@ -190,6 +196,13 @@ docker compose run --rm prisma-init
 ```
 
 This pushes the Prisma schema, regenerates Prisma Client, and seeds demo data.
+
+If `pnpm dev` reports that `@prisma/client` has no exported `PrismaClient`, `OrderState`, or `Prisma`, regenerate Prisma Client on the host:
+
+```bash
+pnpm --filter order-service run prisma:generate
+pnpm dev
+```
 
 ### Backend Cannot Connect To PostgreSQL
 

@@ -12,6 +12,7 @@ corepack prepare pnpm@10.33.0 --activate
 pnpm install
 docker compose up -d postgres redis kafka meilisearch
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 pnpm --filter order-service run start:dev
 ```
 
@@ -58,7 +59,10 @@ To reset all local database data:
 docker compose down -v
 docker compose up -d postgres redis kafka meilisearch
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 ```
+
+Run `prisma:generate` on the host after Docker init, especially on Windows/macOS. The Docker container can prepare the database, but the local TypeScript dev server needs the generated Prisma Client in the host pnpm layout.
 
 ## Environment
 
@@ -82,6 +86,7 @@ Do not use `localhost:5432` from inside a Compose container; that points to the 
 pnpm --filter order-service run start:dev
 pnpm --filter order-service run test
 pnpm --filter order-service run type-check
+pnpm --filter order-service run prisma:generate
 pnpm --filter order-service exec prisma generate
 pnpm --filter order-service exec prisma db push
 pnpm --filter order-service run db:seed
@@ -102,6 +107,13 @@ corepack enable
 corepack prepare pnpm@10.33.0 --activate
 pnpm install
 docker compose run --rm prisma-init
+pnpm --filter order-service run prisma:generate
 ```
 
 If Corepack asks to download pnpm, accept it or run `corepack prepare pnpm@10.33.0 --activate` first. The repo intentionally uses the pnpm version pinned in the root `package.json`.
+
+If `pnpm dev` or `pnpm --filter order-service run start:dev` reports that `@prisma/client` has no exported `PrismaClient`, `OrderState`, or `Prisma`, the Prisma Client was not generated for the host dev environment. Run:
+
+```bash
+pnpm --filter order-service run prisma:generate
+```
