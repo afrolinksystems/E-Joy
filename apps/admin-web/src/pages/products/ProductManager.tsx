@@ -234,8 +234,7 @@ export function ProductManager() {
       {gqlError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           Failed to load: {gqlError}. Ensure order-service is running and{' '}
-          <code className="rounded bg-red-100 px-1">VITE_ADMIN_BEARER_TOKEN</code>{' '}
-          is an admin JWT with <code className="rounded bg-red-100 px-1">staff:read</code>.
+          Your secure admin session needs the <code className="rounded bg-red-100 px-1">staff:read</code> scope.
         </div>
       ) : null}
 

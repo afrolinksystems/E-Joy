@@ -6,7 +6,7 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import { createClient } from 'graphql-ws';
 
 const demoToken =
-  import.meta.env.VITE_DEMO_BEARER_TOKEN?.trim() || 'demo_token';
+  import.meta.env.VITE_DEMO_BEARER_TOKEN?.trim() || '';
 
 // HTTP link (default port 9602)
 const httpLink = new HttpLink({
@@ -17,7 +17,7 @@ const httpLink = new HttpLink({
 const authLink = setContext((_, { headers }) => ({
   headers: {
     ...headers,
-    authorization: `Bearer ${demoToken}`,
+    ...(demoToken ? { authorization: `Bearer ${demoToken}` } : {}),
   },
 }));
 
@@ -28,7 +28,7 @@ const wsLink = new GraphQLWsLink(
   createClient({
     url: import.meta.env.VITE_GRAPHQL_WS_URL ?? 'ws://localhost:9602/graphql',
     connectionParams: () => ({
-      authToken: demoToken,
+      ...(demoToken ? { Authorization: `Bearer ${demoToken}` } : {}),
     }),
   }),
 );

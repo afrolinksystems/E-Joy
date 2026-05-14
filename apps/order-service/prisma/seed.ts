@@ -18,21 +18,15 @@ const prisma = new PrismaClient({
 function getSeedManagerPassword(): string {
   const configured = process.env.SEED_MANAGER_PASSWORD?.trim();
   if (configured) return configured;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('SEED_MANAGER_PASSWORD is required when seeding production');
-  }
-  return 'Admin@123456';
+  throw new Error('SEED_MANAGER_PASSWORD is required for database seeding');
 }
 
 function getSeedPlatformPassword(): string {
   const configured = process.env.SEED_PLATFORM_ADMIN_PASSWORD?.trim();
   if (configured) return configured;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'SEED_PLATFORM_ADMIN_PASSWORD is required when seeding production',
-    );
-  }
-  return 'Owner@123456';
+  throw new Error(
+    'SEED_PLATFORM_ADMIN_PASSWORD is required for database seeding',
+  );
 }
 
 async function main() {

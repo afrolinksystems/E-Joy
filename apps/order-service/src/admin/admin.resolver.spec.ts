@@ -24,10 +24,17 @@ describe('AdminResolver permissions', () => {
     createPlatformCoupon: jest.fn(),
     runPrintRetryCycle: jest.fn(),
   };
-  const jwtService = { sign: jest.fn() };
+  const authSessions = {};
+  const authTokens = {};
+  const rateLimit = {};
 
   function buildResolver() {
-    return new AdminResolver(baseService as never, jwtService as never);
+    return new AdminResolver(
+      baseService as never,
+      authSessions as never,
+      authTokens as never,
+      rateLimit as never,
+    );
   }
 
   beforeEach(() => {

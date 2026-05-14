@@ -9,6 +9,8 @@ import {
 import { OrderState, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
+import { AuthSessionService } from '../auth/auth-session.service';
+import { getAuthConfig } from '../auth/auth-config';
 import { PRISMA_CLIENT } from '../prisma/prisma.token';
 import {
   AdminDashboardModel,
@@ -45,10 +47,7 @@ import {
   ProductModel,
   TopDishModel,
 } from './admin.types';
-import {
-  CustomerThemeOverridesModel,
-  ShopModel,
-} from '../shop/shop.types';
+import { CustomerThemeOverridesModel, ShopModel } from '../shop/shop.types';
 import {
   BannerStatusInput,
   ApproveShopApplicationInput,
@@ -171,6 +170,7 @@ export class AdminService {
     private readonly eventProducer: PaymentEventProducer,
     private readonly realtimeService: RealtimeService,
     private readonly productService: ProductService,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
   platformScopes(role: string): string[] {
@@ -217,6 +217,41 @@ export class AdminService {
     return this.prisma.platformAdmin.findFirst({
       where: { id: adminId, status: PlatformAdminStatusModel.ACTIVE },
     });
+  }
+
+  async changePlatformPassword(
+    adminId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
+    this.assertStrongPassword(newPassword);
+    const admin = await this.prisma.platformAdmin.findFirst({
+      where: { id: adminId, status: PlatformAdminStatusModel.ACTIVE },
+    });
+    const hash =
+      typeof admin?.passwordHash === 'string' ? admin.passwordHash : '';
+    if (!admin || !(await bcrypt.compare(currentPassword, hash))) {
+      return false;
+    }
+    await this.prisma.platformAdmin.upsert({
+      where: { identifier: String(admin.identifier) },
+      update: {
+        passwordHash: await this.hashPassword(newPassword),
+      },
+      create: {
+        name: String(admin.name),
+        identifier: String(admin.identifier),
+        passwordHash: await this.hashPassword(newPassword),
+        role: admin.role as PlatformAdminRoleModel,
+        status: PlatformAdminStatusModel.ACTIVE,
+      },
+    });
+    await this.authSessions.revokeSubject(
+      'PLATFORM_ADMIN',
+      adminId,
+      'password_changed',
+    );
+    return true;
   }
 
   async platformDashboard(
@@ -456,6 +491,13 @@ export class AdminService {
       success: ok,
       reason: verification.reason,
     });
+    if (ok) {
+      await this.authSessions.revokeSubject(
+        'STAFF',
+        staffId,
+        'staff_password_reset',
+      );
+    }
     return {
       ok,
       temporaryPassword,
@@ -531,7 +573,20 @@ export class AdminService {
   }
 
   private async hashPassword(rawPassword: string): Promise<string> {
-    return bcrypt.hash(rawPassword, 10);
+    return bcrypt.hash(rawPassword, getAuthConfig().bcryptCost);
+  }
+
+  private assertStrongPassword(password: string): void {
+    const strong =
+      password.length >= 10 &&
+      /[a-z]/.test(password) &&
+      /[A-Z]/.test(password) &&
+      /\d/.test(password);
+    if (!strong) {
+      throw new BadRequestException(
+        'Password must be at least 10 characters and include upper, lower, and numeric characters',
+      );
+    }
   }
 
   private toStaffModel(row: Record<string, unknown>): StaffModel {
@@ -1177,9 +1232,7 @@ export class AdminService {
                 input.logoUrl.trim() === '' ? null : input.logoUrl.trim(),
             }
           : {}),
-        ...(customerThemePreset !== undefined
-          ? { customerThemePreset }
-          : {}),
+        ...(customerThemePreset !== undefined ? { customerThemePreset } : {}),
         ...(customerThemeOverrides !== undefined
           ? {
               customerThemeOverridesJson:

@@ -268,7 +268,10 @@ describe('AppController (e2e)', () => {
   };
 
   beforeEach(async () => {
-    process.env.JWT_SECRET = jwtSecret;
+    process.env.JWT_ACCESS_SECRET = jwtSecret;
+    process.env.JWT_REFRESH_SECRET = `${jwtSecret}_refresh`;
+    process.env.JWT_ISSUER = 'ejoy-test';
+    process.env.JWT_AUDIENCE = 'ejoy-test';
     process.env.TELEBIRR_APP_SECRET = jwtSecret;
     state.order = null;
     state.paymentAttempt = null;

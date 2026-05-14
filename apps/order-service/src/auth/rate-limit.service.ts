@@ -1,0 +1,45 @@
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+
+type Bucket = {
+  count: number;
+  resetAt: number;
+};
+
+@Injectable()
+export class RateLimitService {
+  private readonly buckets = new Map<string, Bucket>();
+
+  consume(input: {
+    key: string;
+    limit: number;
+    windowMs: number;
+    label: string;
+  }): void {
+    const now = Date.now();
+    const key = createHash('sha256')
+      .update(`${input.label}:${input.key}`)
+      .digest('hex');
+    const current = this.buckets.get(key);
+    if (!current || current.resetAt <= now) {
+      this.buckets.set(key, { count: 1, resetAt: now + input.windowMs });
+      return;
+    }
+    current.count += 1;
+    if (current.count > input.limit) {
+      throw new HttpException(
+        'Too many requests. Try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  getClientIp(req?: {
+    headers?: Record<string, string | string[] | undefined>;
+    ip?: string;
+  }): string {
+    const raw = req?.headers?.['x-forwarded-for'];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return value?.split(',')[0]?.trim() || req?.ip || 'unknown';
+  }
+}

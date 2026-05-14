@@ -1,18 +1,25 @@
 import { ApolloProvider } from '@apollo/client/react'
 import { useMutation, useQuery } from '@apollo/client/react'
 import { ArrowRight, CheckCircle2, ClipboardList, Loader2, LogIn, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 import {
   MERCHANT_ME,
+  LOGOUT,
+  REFRESH_SESSION,
   STAFF_LOGIN,
   SUBMIT_SHOP_APPLICATION,
   type MerchantMeData,
+  type RefreshSessionData,
   type StaffLoginData,
   type SubmitShopApplicationData,
 } from './graphql/auth'
-import { apolloClient } from './lib/apollo'
-import { AdminSessionContext, ADMIN_TOKEN_STORAGE_KEY } from './lib/adminSession'
+import {
+  apolloClient,
+  clearAdminAccessToken,
+  setAdminAccessToken,
+} from './lib/apollo'
+import { AdminSessionContext } from './lib/adminSession'
 import { AdminLayout } from './layouts/AdminLayout'
 import { DashboardPage } from './pages/DashboardPage'
 import { OrdersPage } from './pages/OrdersPage'
@@ -41,25 +48,113 @@ function AdminAppRoutes() {
 }
 
 function ProtectedAdminRoutes() {
-  const [tokenVersion, setTokenVersion] = useState(0)
-  const hasToken = Boolean(sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY))
+  const [hasToken, setHasToken] = useState(false)
+  const [bootstrapped, setBootstrapped] = useState(false)
+  const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null)
+  const [refreshSession] = useMutation<RefreshSessionData>(REFRESH_SESSION)
+  const [logoutMutation] = useMutation(LOGOUT)
   const { data, loading, error, refetch } = useQuery<MerchantMeData>(MERCHANT_ME, {
     skip: !hasToken,
     fetchPolicy: 'network-only',
   })
 
-  const logout = () => {
-    sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY)
-    void apolloClient.clearStore()
-    setTokenVersion((v) => v + 1)
+  useEffect(() => {
+    let alive = true
+    async function restoreSession() {
+      try {
+        const result = await refreshSession()
+        const token = result.data?.refreshSession?.accessToken
+        if (token) {
+          setAdminAccessToken(token)
+          if (alive) setAccessExpiresAt(result.data?.refreshSession?.expiresAt ?? null)
+          if (alive) setHasToken(true)
+        }
+      } catch {
+        clearAdminAccessToken()
+        if (alive) setHasToken(false)
+      } finally {
+        if (alive) setBootstrapped(true)
+      }
+    }
+    void restoreSession()
+    return () => {
+      alive = false
+    }
+  }, [refreshSession])
+
+  useEffect(() => {
+    function handleAuthExpired() {
+      clearAdminAccessToken()
+      void apolloClient.clearStore()
+      setHasToken(false)
+      setBootstrapped(true)
+      setAccessExpiresAt(null)
+    }
+    window.addEventListener('ejoy-auth-expired', handleAuthExpired)
+    return () => window.removeEventListener('ejoy-auth-expired', handleAuthExpired)
+  }, [])
+
+  useEffect(() => {
+    function handleAuthRefreshed(event: Event) {
+      const expiresAt = (event as CustomEvent<{ expiresAt?: string }>).detail?.expiresAt
+      setAccessExpiresAt(expiresAt ?? null)
+      setHasToken(Boolean(expiresAt))
+    }
+    window.addEventListener('ejoy-auth-refreshed', handleAuthRefreshed)
+    return () => window.removeEventListener('ejoy-auth-refreshed', handleAuthRefreshed)
+  }, [])
+
+  useEffect(() => {
+    if (!hasToken || !accessExpiresAt) return
+    const expiresMs = new Date(accessExpiresAt).getTime()
+    const refreshInMs = Math.max(0, expiresMs - Date.now() - 30_000)
+    const timer = window.setTimeout(() => {
+      void refreshSession()
+        .then((result) => {
+          const session = result.data?.refreshSession
+          if (!session?.accessToken) throw new Error('Session expired')
+          setAdminAccessToken(session.accessToken)
+          setAccessExpiresAt(session.expiresAt)
+          setHasToken(true)
+        })
+        .catch(() => {
+          clearAdminAccessToken()
+          void apolloClient.clearStore()
+          setAccessExpiresAt(null)
+          setHasToken(false)
+        })
+    }, refreshInMs)
+    return () => window.clearTimeout(timer)
+  }, [accessExpiresAt, hasToken, refreshSession])
+
+  const logout = async () => {
+    setHasToken(false)
+    setAccessExpiresAt(null)
+    clearAdminAccessToken()
+    try {
+      await logoutMutation()
+    } catch {
+      // Local logout still wins; backend logout is best-effort if the network is gone.
+    }
+    clearAdminAccessToken()
+    await apolloClient.clearStore()
+  }
+
+  if (!bootstrapped) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gap-3 bg-slate-100 text-slate-600">
+        <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+        Restoring secure session...
+      </div>
+    )
   }
 
   if (!hasToken) {
     return (
       <LoginScreen
-        key={`login-${tokenVersion}`}
-        onLoggedIn={() => {
-          setTokenVersion((v) => v + 1)
+        onLoggedIn={(expiresAt) => {
+          setAccessExpiresAt(expiresAt)
+          setHasToken(true)
           void refetch()
         }}
       />
@@ -76,11 +171,13 @@ function ProtectedAdminRoutes() {
   }
 
   if (error || !data?.merchantMe) {
+    clearAdminAccessToken()
     return (
       <LoginScreen
         error={error?.message ?? 'Session expired. Please sign in again.'}
-        onLoggedIn={() => {
-          setTokenVersion((v) => v + 1)
+        onLoggedIn={(expiresAt) => {
+          setAccessExpiresAt(expiresAt)
+          setHasToken(true)
           void refetch()
         }}
       />
@@ -278,7 +375,7 @@ function LoginScreen({
   onLoggedIn,
 }: {
   error?: string
-  onLoggedIn: () => void
+  onLoggedIn: (expiresAt: string) => void
 }) {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -291,10 +388,11 @@ function LoginScreen({
     try {
       const result = await login({ variables: { phone: phone.trim(), password } })
       const token = result.data?.staffLogin.accessToken
+      const expiresAt = result.data?.staffLogin.expiresAt
       if (!token) throw new Error('Login failed')
-      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token)
+      setAdminAccessToken(token)
       await apolloClient.resetStore()
-      onLoggedIn()
+      onLoggedIn(expiresAt ?? new Date(Date.now() + 15 * 60_000).toISOString())
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed')
     }

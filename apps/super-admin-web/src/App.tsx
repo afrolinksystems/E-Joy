@@ -20,8 +20,12 @@ import {
   XCircle,
   type LucideIcon,
 } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { apolloClient, SUPER_ADMIN_TOKEN_KEY } from './lib/apollo'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  apolloClient,
+  clearSuperAdminAccessToken,
+  setSuperAdminAccessToken,
+} from './lib/apollo'
 
 type Page = 'dashboard' | 'applications' | 'restaurants' | 'marketing' | 'operations' | 'audit'
 type Status = 'PENDING' | 'APPROVED' | 'REJECTED'
@@ -111,9 +115,27 @@ const PLATFORM_LOGIN = gql`
   mutation PlatformLogin($identifier: String!, $password: String!) {
     platformLogin(identifier: $identifier, password: $password) {
       accessToken
+      expiresAt
       role
       scope
     }
+  }
+`
+
+const REFRESH_SESSION = gql`
+  mutation RefreshSession {
+    refreshSession {
+      accessToken
+      expiresAt
+      role
+      scope
+    }
+  }
+`
+
+const LOGOUT = gql`
+  mutation Logout {
+    logout
   }
 `
 
@@ -319,33 +341,130 @@ export default function App() {
 }
 
 function SuperAdminShell() {
-  const [version, setVersion] = useState(0)
-  const hasToken = Boolean(sessionStorage.getItem(SUPER_ADMIN_TOKEN_KEY))
+  const [hasToken, setHasToken] = useState(false)
+  const [bootstrapped, setBootstrapped] = useState(false)
+  const [accessExpiresAt, setAccessExpiresAt] = useState<string | null>(null)
+  const [refreshSession] = useMutation<{
+    refreshSession?: { accessToken?: string; expiresAt?: string }
+  }>(REFRESH_SESSION)
   const me = useQuery<{ platformMe: PlatformMe }>(PLATFORM_ME, {
     skip: !hasToken,
     fetchPolicy: 'network-only',
   })
 
+  useEffect(() => {
+    let alive = true
+    async function restore() {
+      try {
+        const result = await refreshSession()
+        const token = result.data?.refreshSession?.accessToken
+        if (token) {
+          setSuperAdminAccessToken(token)
+          if (alive) setAccessExpiresAt(result.data?.refreshSession?.expiresAt ?? null)
+          if (alive) setHasToken(true)
+        }
+      } catch {
+        clearSuperAdminAccessToken()
+        if (alive) setHasToken(false)
+      } finally {
+        if (alive) setBootstrapped(true)
+      }
+    }
+    void restore()
+    return () => {
+      alive = false
+    }
+  }, [refreshSession])
+
+  useEffect(() => {
+    function handleAuthExpired() {
+      clearSuperAdminAccessToken()
+      void apolloClient.clearStore()
+      setHasToken(false)
+      setBootstrapped(true)
+      setAccessExpiresAt(null)
+    }
+    window.addEventListener('ejoy-auth-expired', handleAuthExpired)
+    return () => window.removeEventListener('ejoy-auth-expired', handleAuthExpired)
+  }, [])
+
+  useEffect(() => {
+    function handleAuthRefreshed(event: Event) {
+      const expiresAt = (event as CustomEvent<{ expiresAt?: string }>).detail?.expiresAt
+      setAccessExpiresAt(expiresAt ?? null)
+      setHasToken(Boolean(expiresAt))
+    }
+    window.addEventListener('ejoy-auth-refreshed', handleAuthRefreshed)
+    return () => window.removeEventListener('ejoy-auth-refreshed', handleAuthRefreshed)
+  }, [])
+
+  useEffect(() => {
+    if (!hasToken || !accessExpiresAt) return
+    const expiresMs = new Date(accessExpiresAt).getTime()
+    const refreshInMs = Math.max(0, expiresMs - Date.now() - 30_000)
+    const timer = window.setTimeout(() => {
+      void refreshSession()
+        .then((result) => {
+          const session = result.data?.refreshSession
+          if (!session?.accessToken) throw new Error('Session expired')
+          setSuperAdminAccessToken(session.accessToken)
+          setAccessExpiresAt(session.expiresAt ?? null)
+          setHasToken(true)
+        })
+        .catch(() => {
+          clearSuperAdminAccessToken()
+          void apolloClient.clearStore()
+          setAccessExpiresAt(null)
+          setHasToken(false)
+        })
+    }, refreshInMs)
+    return () => window.clearTimeout(timer)
+  }, [accessExpiresAt, hasToken, refreshSession])
+
+  if (!bootstrapped) {
+    return <FullScreenLoader label="Restoring secure session" />
+  }
   if (!hasToken || me.error) {
+    if (me.error) {
+      clearSuperAdminAccessToken()
+    }
     return (
       <LoginScreen
-        key={version}
         error={me.error?.message}
-        onLoggedIn={() => setVersion((v) => v + 1)}
+        onLoggedIn={(expiresAt) => {
+          setAccessExpiresAt(expiresAt)
+          setHasToken(true)
+        }}
       />
     )
   }
   if (me.loading && !me.data) {
     return <FullScreenLoader label="Loading super admin console" />
   }
-  return <Console session={me.data!.platformMe} onLogout={() => setVersion((v) => v + 1)} />
+  return (
+    <Console
+      session={me.data!.platformMe}
+      onLogout={() => {
+        setHasToken(false)
+        setAccessExpiresAt(null)
+      }}
+    />
+  )
 }
 
-function LoginScreen({ error, onLoggedIn }: { error?: string; onLoggedIn: () => void }) {
+function LoginScreen({
+  error,
+  onLoggedIn,
+}: {
+  error?: string
+  onLoggedIn: (expiresAt: string) => void
+}) {
   const [identifier, setIdentifier] = useState('owner@ejoy.local')
   const [password, setPassword] = useState('')
   const [formError, setFormError] = useState(error ?? '')
-  const [login, loginState] = useMutation<{ platformLogin: { accessToken: string } }>(PLATFORM_LOGIN)
+  const [login, loginState] = useMutation<{
+    platformLogin: { accessToken: string; expiresAt?: string }
+  }>(PLATFORM_LOGIN)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -353,10 +472,11 @@ function LoginScreen({ error, onLoggedIn }: { error?: string; onLoggedIn: () => 
     try {
       const result = await login({ variables: { identifier: identifier.trim(), password } })
       const token = result.data?.platformLogin.accessToken
+      const expiresAt = result.data?.platformLogin.expiresAt
       if (!token) throw new Error('Login failed')
-      sessionStorage.setItem(SUPER_ADMIN_TOKEN_KEY, token)
+      setSuperAdminAccessToken(token)
       await apolloClient.resetStore()
-      onLoggedIn()
+      onLoggedIn(expiresAt ?? new Date(Date.now() + 15 * 60_000).toISOString())
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Login failed')
     }
@@ -387,7 +507,6 @@ function LoginScreen({ error, onLoggedIn }: { error?: string; onLoggedIn: () => 
           {loginState.loading ? <Loader2 className="animate-spin" size={17} /> : <LogIn size={17} />}
           Sign in
         </button>
-        <p className="mt-4 text-xs text-slate-500">Local seed default password: Owner@123456</p>
       </form>
     </main>
   )
@@ -395,6 +514,7 @@ function LoginScreen({ error, onLoggedIn }: { error?: string; onLoggedIn: () => 
 
 function Console({ session, onLogout }: { session: PlatformMe; onLogout: () => void }) {
   const [page, setPage] = useState<Page>('dashboard')
+  const [logoutMutation] = useMutation(LOGOUT)
   const nav = [
     ['dashboard', LayoutDashboard, 'Dashboard'],
     ['applications', ClipboardList, 'Applications'],
@@ -404,10 +524,16 @@ function Console({ session, onLogout }: { session: PlatformMe; onLogout: () => v
     ['audit', FileClock, 'Audit'],
   ] as const
 
-  function logout() {
-    sessionStorage.removeItem(SUPER_ADMIN_TOKEN_KEY)
-    void apolloClient.clearStore()
+  async function logout() {
     onLogout()
+    clearSuperAdminAccessToken()
+    try {
+      await logoutMutation()
+    } catch {
+      // Local logout still wins; backend logout is best-effort if the network is gone.
+    }
+    clearSuperAdminAccessToken()
+    await apolloClient.clearStore()
   }
 
   return (

@@ -102,12 +102,9 @@ export class OrderService {
       requestId: 'telebirr-rest-webhook',
       telebirr: notify,
     });
-    const secret =
-      process.env.TELEBIRR_APP_SECRET ?? process.env.JWT_SECRET ?? '';
+    const secret = process.env.TELEBIRR_APP_SECRET ?? '';
     if (!secret) {
-      throw new Error(
-        'JWT_SECRET or TELEBIRR_APP_SECRET is required for webhook processing',
-      );
+      throw new Error('TELEBIRR_APP_SECRET is required for webhook processing');
     }
     const signature = createHmac('sha256', secret)
       .update(rawPayload)

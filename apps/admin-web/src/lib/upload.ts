@@ -1,3 +1,5 @@
+import { getAdminAccessToken } from './apollo'
+
 /** order-service base URL (REST upload + GraphQL). */
 export const ORDER_SERVICE_ORIGIN =
   import.meta.env.VITE_ORDER_SERVICE_ORIGIN ?? 'http://localhost:9602'
@@ -6,12 +8,11 @@ export const ORDER_SERVICE_ORIGIN =
 export async function uploadPublicImage(file: File): Promise<string> {
   const body = new FormData()
   body.append('file', file)
-  const token =
-    sessionStorage.getItem('ejoy_admin_access_token')?.trim() ||
-    import.meta.env.VITE_ADMIN_BEARER_TOKEN?.trim()
+  const token = getAdminAccessToken()
   const res = await fetch(`${ORDER_SERVICE_ORIGIN}/upload/image`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    credentials: 'include',
     body,
   })
   if (!res.ok) {

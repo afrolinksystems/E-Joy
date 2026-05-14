@@ -5,6 +5,10 @@ import { PubSub } from 'graphql-subscriptions';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { join } from 'path';
+import { getAuthConfig } from './auth/auth-config';
+import { AuthSessionService } from './auth/auth-session.service';
+import { AuthTokenService } from './auth/auth-token.service';
+import { RateLimitService } from './auth/rate-limit.service';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrderResolver } from './order/order.resolver';
@@ -42,8 +46,13 @@ import { TelebirrService } from './payment/telebirr.service';
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'dev_jwt_secret',
-      signOptions: { expiresIn: '1h' },
+      secret: getAuthConfig().accessSecret,
+      signOptions: {
+        expiresIn: getAuthConfig().accessTokenTtlSeconds,
+        issuer: getAuthConfig().issuer,
+        audience: getAuthConfig().audience,
+        algorithm: 'HS256',
+      },
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -73,11 +82,13 @@ import { TelebirrService } from './payment/telebirr.service';
       },
       context: ({
         req,
+        res,
         extra,
       }: {
         req?: unknown;
+        res?: unknown;
         extra?: { req?: unknown };
-      }) => ({ req: extra?.req ?? req }),
+      }) => ({ req: extra?.req ?? req, res }),
     }),
   ],
   controllers: [AppController, UploadController, PaymentController],
@@ -89,6 +100,9 @@ import { TelebirrService } from './payment/telebirr.service';
     JwtAuthGuard,
     RolesGuard,
     JwtStrategy,
+    AuthSessionService,
+    AuthTokenService,
+    RateLimitService,
     TelebirrPaymentProviderService,
     TelebirrService,
     { provide: PAYMENT_PROVIDER, useExisting: TelebirrPaymentProviderService },

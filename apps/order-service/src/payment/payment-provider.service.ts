@@ -24,7 +24,7 @@ export class TelebirrPaymentProviderService implements PaymentProvider {
     }
 
     // Compatibility mode for local/dev and provider sandbox variants.
-    const secret = process.env.TELEBIRR_APP_SECRET ?? process.env.JWT_SECRET;
+    const secret = process.env.TELEBIRR_APP_SECRET;
     if (!secret) {
       return false;
     }

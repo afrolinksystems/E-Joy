@@ -4,10 +4,29 @@ export const STAFF_LOGIN = gql`
   mutation StaffLogin($phone: String!, $password: String!) {
     staffLogin(phone: $phone, password: $password) {
       accessToken
+      expiresAt
       role
       shopId
       scope
     }
+  }
+`
+
+export const REFRESH_SESSION = gql`
+  mutation RefreshSession {
+    refreshSession {
+      accessToken
+      expiresAt
+      role
+      shopId
+      scope
+    }
+  }
+`
+
+export const LOGOUT = gql`
+  mutation Logout {
+    logout
   }
 `
 
@@ -45,8 +64,19 @@ export const SUBMIT_SHOP_APPLICATION = gql`
 export type StaffLoginData = {
   staffLogin: {
     accessToken: string
+    expiresAt: string
     role: string
     shopId: string
+    scope: string[]
+  }
+}
+
+export type RefreshSessionData = {
+  refreshSession: {
+    accessToken: string
+    expiresAt: string
+    role: string
+    shopId?: string | null
     scope: string[]
   }
 }

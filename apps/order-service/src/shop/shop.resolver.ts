@@ -8,8 +8,18 @@ export class ShopResolver {
 
   @Query(() => [ShopModel])
   async shops(): Promise<ShopModel[]> {
-    const rows = await this.prisma.shop.findMany({
+    const rows: ShopRow[] = await (this.prisma.shop as any).findMany({
       orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        contactPhone: true,
+        logoUrl: true,
+        customerThemePreset: true,
+        customerThemeOverridesJson: true,
+        active: true,
+      },
     });
     return rows
       .filter((r) => (r as { active?: boolean }).active !== false)
@@ -17,24 +27,29 @@ export class ShopResolver {
   }
 
   @Query(() => ShopModel, { nullable: true })
-  async customerShop(@Args('shopId') shopId: string): Promise<ShopModel | null> {
-    const row = await this.prisma.shop.findUnique({ where: { id: shopId } });
+  async customerShop(
+    @Args('shopId') shopId: string,
+  ): Promise<ShopModel | null> {
+    const row = await (this.prisma.shop as any).findUnique({
+      where: { id: shopId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        contactPhone: true,
+        logoUrl: true,
+        customerThemePreset: true,
+        customerThemeOverridesJson: true,
+        active: true,
+      },
+    });
     if (!row || row.active === false) {
       return null;
     }
     return this.toShopModel(row);
   }
 
-  private toShopModel(row: {
-    id: string;
-    name: string;
-    description: string | null;
-    contactPhone: string | null;
-    logoUrl: string | null;
-    customerThemePreset: string | null;
-    customerThemeOverridesJson: string | null;
-    active: boolean;
-  }): ShopModel {
+  private toShopModel(row: ShopRow): ShopModel {
     return {
       id: row.id,
       name: row.name,
@@ -62,3 +77,14 @@ export class ShopResolver {
     }
   }
 }
+
+type ShopRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  contactPhone: string | null;
+  logoUrl: string | null;
+  customerThemePreset: string | null;
+  customerThemeOverridesJson: string | null;
+  active: boolean;
+};
