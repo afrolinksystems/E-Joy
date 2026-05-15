@@ -1,13 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { MerchantMeData } from '../graphql/auth'
-
-export type MerchantSession = MerchantMeData['merchantMe']
-
-export type AdminSessionContextValue = {
-  session: MerchantSession
-  shopId: string
-  logout: () => void
-}
+import type { AdminSessionContextValue } from '../features/merchant-session/merchant-session.types'
 
 export const AdminSessionContext = createContext<AdminSessionContextValue | null>(null)
 

@@ -49,7 +49,6 @@ export type MerchantDispatchOrderRow = {
   orderNo: string
   totalAmount: number
   status: 'PENDING' | 'PREPARING' | 'COMPLETED' | 'CANCELLED'
-  /** Canonical order lifecycle from backend (`OrderState`). */
   orderState: string
   createdAt: string
   shopName: string
