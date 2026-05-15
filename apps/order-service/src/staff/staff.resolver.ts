@@ -30,6 +30,7 @@ import { RateLimitService } from '../auth/rate-limit.service';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AdminService } from '../admin/admin.service';
+import { AppLoggerService } from '../ops/app-logger.service';
 import { REALTIME_TOPICS, RealtimeService } from '../realtime/realtime.service';
 import { StaffService } from './staff.service';
 import {
@@ -65,6 +66,7 @@ export class StaffResolver {
     private readonly authSessions: AuthSessionService,
     private readonly authTokens: AuthTokenService,
     private readonly rateLimit: RateLimitService,
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   private assertRole(
@@ -299,6 +301,12 @@ export class StaffResolver {
       windowMs: 60_000,
     });
     if (!normalizedPhone || !password.trim()) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'STAFF',
+        identifier: normalizedPhone,
+        reason: 'missing_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid phone or password');
     }
     const staff = await this.staffService.authenticateStaff(
@@ -306,6 +314,12 @@ export class StaffResolver {
       password,
     );
     if (!staff) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'STAFF',
+        identifier: normalizedPhone,
+        reason: 'invalid_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid phone or password');
     }
     const role = String(staff.role);
@@ -329,6 +343,12 @@ export class StaffResolver {
       session.sessionId,
     );
     setRefreshCookie(ctx.res, session.refreshToken);
+    this.appLogger.info('auth.login.success', {
+      subjectType: 'STAFF',
+      subjectId: String(staff.id),
+      shopId,
+      role: jwtRole,
+    });
     return {
       accessToken: signed.accessToken,
       expiresAt: signed.expiresAt,
@@ -358,9 +378,18 @@ export class StaffResolver {
       windowMs: 60_000,
     });
     if (!refreshToken) {
+      this.appLogger.warn('auth.refresh.failed', { reason: 'missing_cookie' });
       throw new UnauthorizedException('Login required');
     }
-    const rotated = await this.authSessions.rotateRefreshToken(refreshToken);
+    let rotated: Awaited<ReturnType<AuthSessionService['rotateRefreshToken']>>;
+    try {
+      rotated = await this.authSessions.rotateRefreshToken(refreshToken);
+    } catch (err) {
+      this.appLogger.warn('auth.refresh.failed', {
+        reason: err instanceof Error ? err.message : 'invalid_refresh',
+      });
+      throw err;
+    }
     if (rotated.session.subjectType === 'STAFF') {
       const staff = await this.staffService.staffActor(
         rotated.session.subjectId,
@@ -370,6 +399,11 @@ export class StaffResolver {
           rotated.session.id,
           'staff_inactive',
         );
+        this.appLogger.warn('auth.refresh.failed', {
+          subjectType: 'STAFF',
+          subjectId: rotated.session.subjectId,
+          reason: 'staff_inactive',
+        });
         throw new UnauthorizedException('Session is no longer valid');
       }
       const role = String(staff.role);
@@ -385,6 +419,11 @@ export class StaffResolver {
         rotated.session.id,
       );
       setRefreshCookie(ctx.res, rotated.refreshToken);
+      this.appLogger.info('auth.refresh.success', {
+        subjectType: 'STAFF',
+        subjectId: String(staff.id),
+        shopId: String(staff.shopId),
+      });
       return {
         accessToken: signed.accessToken,
         expiresAt: signed.expiresAt,
@@ -399,6 +438,11 @@ export class StaffResolver {
         rotated.session.id,
         'platform_admin_inactive',
       );
+      this.appLogger.warn('auth.refresh.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        subjectId: rotated.session.subjectId,
+        reason: 'platform_admin_inactive',
+      });
       throw new UnauthorizedException('Session is no longer valid');
     }
     const scope = this.adminService.platformScopes(String(admin.role));
@@ -413,6 +457,11 @@ export class StaffResolver {
       rotated.session.id,
     );
     setRefreshCookie(ctx.res, rotated.refreshToken);
+    this.appLogger.info('auth.refresh.success', {
+      subjectType: 'PLATFORM_ADMIN',
+      subjectId: String(admin.id),
+      role: String(admin.role),
+    });
     return {
       accessToken: signed.accessToken,
       expiresAt: signed.expiresAt,
@@ -438,6 +487,7 @@ export class StaffResolver {
       await this.authSessions.revokeSession(sessionId, 'logout');
     }
     clearRefreshCookie(ctx.res);
+    this.appLogger.info('auth.logout', { sessionId: sessionId ?? 'unknown' });
     return true;
   }
 
@@ -459,6 +509,10 @@ export class StaffResolver {
         userId,
         'logout_all',
       );
+      this.appLogger.info('auth.logout_all', {
+        subjectType: ctx.req.user.subjectType,
+        subjectId: userId,
+      });
     }
     clearRefreshCookie(ctx?.res);
     return true;
@@ -502,6 +556,10 @@ export class StaffResolver {
     if (!ok) {
       throw new UnauthorizedException('Invalid current password');
     }
+    this.appLogger.info('auth.password_changed', {
+      subjectType: ctx.req.user.subjectType,
+      subjectId: userId,
+    });
     return true;
   }
 

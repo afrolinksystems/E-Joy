@@ -3,6 +3,7 @@ import { CombinedGraphQLErrors } from '@apollo/client/errors'
 import { setContext } from '@apollo/client/link/context'
 import { ErrorLink } from '@apollo/client/link/error'
 import { Observable } from '@apollo/client/utilities'
+import { captureFrontendException } from './tracking'
 
 let superAdminAccessToken = ''
 
@@ -120,6 +121,21 @@ const refreshOnAuthErrorLink = new ErrorLink(({ error, operation, forward }) => 
   })
 })
 
+const captureGraphqlErrorLink = new ErrorLink(({ error, operation }) => {
+  const operationName = operation.operationName ?? 'anonymous'
+  if (['PlatformLogin', 'RefreshSession'].includes(operationName)) return
+  captureFrontendException(error, {
+    operationName,
+    graphQLErrors: CombinedGraphQLErrors.is(error)
+      ? error.errors.map((err) => ({
+          message: err.message,
+          code: err.extensions?.code,
+          path: err.path?.join('.'),
+        }))
+      : undefined,
+  })
+})
+
 const authLink = setContext((_, { headers }) => {
   const token = superAdminAccessToken
   if (!token) return { headers }
@@ -132,6 +148,11 @@ const authLink = setContext((_, { headers }) => {
 })
 
 export const apolloClient = new ApolloClient({
-  link: ApolloLink.from([refreshOnAuthErrorLink, authLink, httpLink]),
+  link: ApolloLink.from([
+    refreshOnAuthErrorLink,
+    captureGraphqlErrorLink,
+    authLink,
+    httpLink,
+  ]),
   cache: new InMemoryCache(),
 })

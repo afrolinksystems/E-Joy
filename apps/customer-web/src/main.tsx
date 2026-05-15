@@ -1,25 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ApolloProvider } from '@apollo/client/react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import { Toaster } from './components/ui/sonner'
-import { apolloClient } from './lib/apollo'
-import { OrderDetailRoute } from './routes/OrderDetailRoute'
-import { MockTelebirrRoute } from './routes/MockTelebirrRoute'
+import { AppProviders } from './app/AppProviders'
+import { initErrorTracking } from './lib/tracking'
+
+initErrorTracking()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ApolloProvider client={apolloClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/mock-telebirr" element={<MockTelebirrRoute />} />
-          <Route path="/orders/:orderId" element={<OrderDetailRoute />} />
-          <Route path="/*" element={<App />} />
-        </Routes>
-        <Toaster position="top-center" richColors closeButton />
-      </BrowserRouter>
-    </ApolloProvider>
+    <AppProviders>
+      <App />
+    </AppProviders>
   </StrictMode>,
 )

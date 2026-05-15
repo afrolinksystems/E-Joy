@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { getAuthConfig } from './auth-config';
+import { AppLoggerService } from '../ops/app-logger.service';
 
 export type AuthSubjectType = 'STAFF' | 'PLATFORM_ADMIN';
 
@@ -29,7 +30,10 @@ export type AuthSessionRow = {
 export class AuthSessionService {
   private readonly logger = new Logger(AuthSessionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly appLogger: AppLoggerService,
+  ) {}
 
   hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
@@ -77,6 +81,11 @@ export class AuthSessionService {
     this.logger.log(
       `auth_session_created subject=${input.subjectType}:${input.subjectId}`,
     );
+    this.appLogger.info('auth.session.created', {
+      subjectType: input.subjectType,
+      subjectId: input.subjectId,
+      sessionId,
+    });
     return { sessionId, refreshToken, expiresAt };
   }
 
@@ -125,6 +134,11 @@ export class AuthSessionService {
     if (!this.safeEqualHex(actualHash, session.refreshTokenHash)) {
       await this.revokeFamily(session.tokenFamily, 'refresh_reuse_detected');
       this.logger.warn(`refresh_reuse_detected session=${session.id}`);
+      this.appLogger.warn('auth.refresh.reuse_detected', {
+        sessionId: session.id,
+        subjectType: session.subjectType,
+        subjectId: session.subjectId,
+      });
       throw new UnauthorizedException('Invalid refresh session');
     }
     const nextRefreshToken = this.buildRefreshToken(session.id);
@@ -161,6 +175,7 @@ export class AuthSessionService {
     this.logger.log(
       `auth_session_revoked session=${sessionId} reason=${reason}`,
     );
+    this.appLogger.info('auth.session.revoked', { sessionId, reason });
   }
 
   async revokeFamily(tokenFamily: string, reason: string): Promise<void> {

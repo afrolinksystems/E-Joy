@@ -6,6 +6,7 @@ import { getMainDefinition } from '@apollo/client/utilities'
 import { Observable } from '@apollo/client/utilities'
 import { setContext } from '@apollo/client/link/context'
 import { createClient } from 'graphql-ws'
+import { captureFrontendException } from './tracking'
 
 let adminAccessToken = ''
 
@@ -135,6 +136,21 @@ const refreshOnAuthErrorLink = new ErrorLink(({ error, operation, forward }) => 
   })
 })
 
+const captureGraphqlErrorLink = new ErrorLink(({ error, operation }) => {
+  const operationName = operation.operationName ?? 'anonymous'
+  if (['StaffLogin', 'RefreshSession'].includes(operationName)) return
+  captureFrontendException(error, {
+    operationName,
+    graphQLErrors: CombinedGraphQLErrors.is(error)
+      ? error.errors.map((err) => ({
+          message: err.message,
+          code: err.extensions?.code,
+          path: err.path?.join('.'),
+        }))
+      : undefined,
+  })
+})
+
 const wsLink = new GraphQLWsLink(
   createClient({
     url: wsUri,
@@ -165,7 +181,12 @@ const authLink = setContext((_, { headers }) => {
   }
 })
 
-const httpChain = ApolloLink.from([refreshOnAuthErrorLink, authLink, httpLink])
+const httpChain = ApolloLink.from([
+  refreshOnAuthErrorLink,
+  captureGraphqlErrorLink,
+  authLink,
+  httpLink,
+])
 
 const splitLink = split(
   ({ query }) => {

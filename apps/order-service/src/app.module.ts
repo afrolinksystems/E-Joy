@@ -9,6 +9,7 @@ import { getAuthConfig } from './auth/auth-config';
 import { AuthSessionService } from './auth/auth-session.service';
 import { AuthTokenService } from './auth/auth-token.service';
 import { RateLimitService } from './auth/rate-limit.service';
+import { captureException } from './ops/error-tracking';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrderResolver } from './order/order.resolver';
@@ -31,6 +32,7 @@ import { PaymentMetricsService } from './payment/payment-metrics.service';
 import { OpsResolver } from './ops/ops.resolver';
 import { OpsService } from './ops/ops.service';
 import { ObservabilityService } from './ops/observability.service';
+import { AppLoggerService } from './ops/app-logger.service';
 import { RealtimeService } from './realtime/realtime.service';
 import { ProductResolver } from './product/product.resolver';
 import { ProductService } from './product/product.service';
@@ -41,6 +43,7 @@ import { UploadController } from './upload/upload.controller';
 import { UploadService } from './upload/upload.service';
 import { PaymentController } from './payment/payment.controller';
 import { TelebirrService } from './payment/telebirr.service';
+import type { GraphQLFormattedError } from 'graphql';
 
 @Module({
   imports: [
@@ -89,6 +92,17 @@ import { TelebirrService } from './payment/telebirr.service';
         res?: unknown;
         extra?: { req?: unknown };
       }) => ({ req: extra?.req ?? req, res }),
+      formatError: (formattedError: GraphQLFormattedError) => {
+        if (formattedError.extensions?.code === 'INTERNAL_SERVER_ERROR') {
+          captureException(new Error(formattedError.message), {
+            graphql: {
+              path: formattedError.path?.join('.'),
+              code: formattedError.extensions.code,
+            },
+          });
+        }
+        return formattedError;
+      },
     }),
   ],
   controllers: [AppController, UploadController, PaymentController],
@@ -127,6 +141,7 @@ import { TelebirrService } from './payment/telebirr.service';
     OpsResolver,
     OpsService,
     ObservabilityService,
+    AppLoggerService,
     RealtimeService,
     UploadService,
   ],

@@ -64,6 +64,7 @@ import {
   UpdateShopInput,
 } from './admin.inputs';
 import { ShopModel } from '../shop/shop.types';
+import { AppLoggerService } from '../ops/app-logger.service';
 
 @Resolver()
 export class AdminResolver {
@@ -72,6 +73,7 @@ export class AdminResolver {
     private readonly authSessions: AuthSessionService,
     private readonly authTokens: AuthTokenService,
     private readonly rateLimit: RateLimitService,
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   private assertManagerAccess(
@@ -115,6 +117,12 @@ export class AdminResolver {
       windowMs: 60_000,
     });
     if (!normalizedIdentifier || !password.trim()) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        identifier: normalizedIdentifier,
+        reason: 'missing_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid identifier or password');
     }
     const admin = await this.adminService.authenticatePlatformAdmin(
@@ -122,6 +130,12 @@ export class AdminResolver {
       password,
     );
     if (!admin) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        identifier: normalizedIdentifier,
+        reason: 'invalid_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid identifier or password');
     }
     const scope = this.adminService.platformScopes(String(admin.role));
@@ -142,6 +156,11 @@ export class AdminResolver {
       session.sessionId,
     );
     setRefreshCookie(ctx.res, session.refreshToken);
+    this.appLogger.info('auth.login.success', {
+      subjectType: 'PLATFORM_ADMIN',
+      subjectId: String(admin.id),
+      role: String(admin.role),
+    });
     return {
       accessToken: signed.accessToken,
       expiresAt: signed.expiresAt,

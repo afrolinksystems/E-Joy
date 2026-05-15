@@ -12,6 +12,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RateLimitService } from '../auth/rate-limit.service';
+import { AppLoggerService } from '../ops/app-logger.service';
 import { UploadService } from './upload.service';
 
 const imageUpload = FileInterceptor('file', {
@@ -37,6 +38,7 @@ export class UploadController {
   constructor(
     private readonly uploadService: UploadService,
     private readonly rateLimit: RateLimitService,
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   private assertCanUpload(req: UploadRequest) {
@@ -68,6 +70,10 @@ export class UploadController {
       windowMs: 60_000,
     });
     if (!file?.buffer?.length) {
+      this.appLogger.warn('upload.rejected', {
+        reason: 'missing_file',
+        userId: req.user?.id,
+      });
       throw new BadRequestException('file is required');
     }
     this.assertSafeImage(file);
@@ -83,12 +89,20 @@ export class UploadController {
       'image/gif',
     ]);
     if (!allowed.has(file.mimetype)) {
+      this.appLogger.warn('upload.rejected', {
+        reason: 'invalid_mime',
+        mimetype: file.mimetype,
+      });
       throw new BadRequestException(
         'Only JPEG, PNG, WEBP, or GIF images are allowed',
       );
     }
     const name = file.originalname.toLowerCase();
     if (!/\.(jpe?g|png|webp|gif)$/.test(name)) {
+      this.appLogger.warn('upload.rejected', {
+        reason: 'invalid_extension',
+        originalname: file.originalname,
+      });
       throw new BadRequestException('Image extension is not allowed');
     }
     const b = file.buffer;
@@ -106,6 +120,10 @@ export class UploadController {
       b[10] === 0x42 &&
       b[11] === 0x50;
     if (!(isJpeg || isPng || isGif || isWebp)) {
+      this.appLogger.warn('upload.rejected', {
+        reason: 'signature_mismatch',
+        mimetype: file.mimetype,
+      });
       throw new BadRequestException(
         'Image content does not match an allowed format',
       );

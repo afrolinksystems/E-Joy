@@ -27,6 +27,7 @@ describe('AdminResolver permissions', () => {
   const authSessions = {};
   const authTokens = {};
   const rateLimit = {};
+  const appLogger = {};
 
   function buildResolver() {
     return new AdminResolver(
@@ -34,6 +35,7 @@ describe('AdminResolver permissions', () => {
       authSessions as never,
       authTokens as never,
       rateLimit as never,
+      appLogger as never,
     );
   }
 

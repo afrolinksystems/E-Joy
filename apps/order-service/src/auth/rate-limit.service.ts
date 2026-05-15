@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { AppLoggerService } from '../ops/app-logger.service';
 
 type Bucket = {
   count: number;
@@ -9,6 +10,8 @@ type Bucket = {
 @Injectable()
 export class RateLimitService {
   private readonly buckets = new Map<string, Bucket>();
+
+  constructor(private readonly appLogger: AppLoggerService) {}
 
   consume(input: {
     key: string;
@@ -27,6 +30,11 @@ export class RateLimitService {
     }
     current.count += 1;
     if (current.count > input.limit) {
+      this.appLogger.warn('rate_limit.blocked', {
+        label: input.label,
+        limit: input.limit,
+        windowMs: input.windowMs,
+      });
       throw new HttpException(
         'Too many requests. Try again later.',
         HttpStatus.TOO_MANY_REQUESTS,

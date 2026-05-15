@@ -7,6 +7,9 @@ interface ImportMetaEnv {
   readonly VITE_ORDER_SERVICE_ORIGIN?: string
   /** Overrides default shop id for dispatch / GraphQL variables */
   readonly VITE_SHOP_ID?: string
+  readonly VITE_BETTER_STACK_SENTRY_DSN?: string
+  readonly VITE_APP_ENV?: string
+  readonly VITE_APP_RELEASE?: string
 }
 
 interface ImportMeta {

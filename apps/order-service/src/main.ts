@@ -19,12 +19,23 @@ import helmet from 'helmet';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { getAuthConfig } from './auth/auth-config';
+import { AppLoggerService } from './ops/app-logger.service';
+import { captureException, initErrorTracking } from './ops/error-tracking';
 import { ObservabilityService } from './ops/observability.service';
 import { SecurityValidationPipe } from './security/security-validation.pipe';
 import { ensureUploadsDir, UPLOADS_ROOT } from './upload-path';
 
+process.on('unhandledRejection', (reason) => {
+  captureException(reason, { phase: 'unhandledRejection' });
+});
+
+process.on('uncaughtException', (err) => {
+  captureException(err, { phase: 'uncaughtException' });
+});
+
 async function bootstrap() {
   getAuthConfig();
+  initErrorTracking();
   ensureUploadsDir();
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -70,6 +81,7 @@ async function bootstrap() {
     credentials: true,
   });
   const observability = app.get(ObservabilityService);
+  const appLogger = app.get(AppLoggerService);
   app.use((req: any, res: any, next: () => void) => {
     const started = Date.now();
     const requestId = (req.headers?.['x-request-id'] as string) ?? randomUUID();
@@ -84,24 +96,22 @@ async function bootstrap() {
         statusCode: typeof res.statusCode === 'number' ? res.statusCode : 200,
         traceIdPresent: Boolean(requestId),
       });
-      console.log(
-        JSON.stringify({
-          level: 'info',
-          requestId,
-          userId,
-          orderId,
-          path: req.path,
-          method: req.method,
-          statusCode: res.statusCode,
-          durationMs,
-        }),
-      );
+      appLogger.info('request.completed', {
+        requestId,
+        userId,
+        orderId,
+        path: req.path,
+        method: req.method,
+        statusCode: res.statusCode,
+        durationMs,
+      });
     });
     next();
   });
   await app.listen(process.env.PORT ?? 9602);
 }
 void bootstrap().catch((err: unknown) => {
+  captureException(err, { phase: 'bootstrap' });
   console.error(err);
   process.exit(1);
 });
