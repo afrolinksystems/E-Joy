@@ -1,5 +1,17 @@
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 import type { StaffRole } from '../../../graphql/staff'
+import { Button } from '../../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../components/ui/dialog'
+import { Field, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
+import { NativeSelect, NativeSelectOption } from '../../../components/ui/native-select'
 import type { StaffFormState } from '../staff.types'
 import { STAFF_ROLE_OPTIONS } from '../staff.utils'
 
@@ -20,75 +32,49 @@ export function AddStaffDialog({
   onFormChange,
   onSubmit,
 }: AddStaffDialogProps) {
-  if (!open) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-staff-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-orange-600" />
-            <h2 id="add-staff-title" className="text-lg font-semibold text-slate-900">
-              Add new staff
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="mt-1 text-sm text-slate-500">
-          Initial password can be shared with the staff member; they should
-          change it after first login when supported.
-        </p>
-        <div className="mt-4 space-y-3">
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Name
-            </span>
-            <input
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) onClose()
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus />
+            Add new staff
+          </DialogTitle>
+          <DialogDescription>
+            Initial password can be shared with the staff member; they should change it after first login when supported.
+          </DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="staff-name">Name</FieldLabel>
+            <Input
+              id="staff-name"
               type="text"
               value={form.name}
               onChange={(event) =>
                 onFormChange((current) => ({ ...current, name: event.target.value }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               autoComplete="off"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Phone
-            </span>
-            <input
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="staff-phone">Phone</FieldLabel>
+            <Input
+              id="staff-phone"
               type="tel"
               value={form.phone}
               onChange={(event) =>
                 onFormChange((current) => ({ ...current, phone: event.target.value }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               autoComplete="off"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Initial password
-            </span>
-            <input
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="staff-password">Initial password</FieldLabel>
+            <Input
+              id="staff-password"
               type="password"
               value={form.password}
               onChange={(event) =>
@@ -97,15 +83,13 @@ export function AddStaffDialog({
                   password: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               autoComplete="new-password"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Role
-            </span>
-            <select
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="staff-role">Role</FieldLabel>
+            <NativeSelect
+              id="staff-role"
               value={form.role}
               onChange={(event) =>
                 onFormChange((current) => ({
@@ -113,36 +97,26 @@ export function AddStaffDialog({
                   role: event.target.value as StaffRole,
                 }))
               }
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="w-full"
             >
               {STAFF_ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
+                <NativeSelectOption key={option.value} value={option.value}>
                   {option.label}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
-          </label>
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
+            </NativeSelect>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={creating}
-            onClick={onSubmit}
-            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
-          >
-            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          </Button>
+          <Button type="button" disabled={creating} onClick={onSubmit}>
+            {creating ? <Loader2 data-icon="inline-start" className="animate-spin" /> : null}
             Create
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
-

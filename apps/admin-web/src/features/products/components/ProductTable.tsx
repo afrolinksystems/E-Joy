@@ -1,4 +1,16 @@
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
+import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent } from '../../../components/ui/card'
+import { Spinner } from '../../../components/ui/spinner'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../../components/ui/table'
 import type { ProductRow } from '../../../graphql/products'
 import { centsToBirrDisplay } from '../../../lib/price'
 
@@ -18,101 +30,87 @@ export function ProductTable({
   onEdit,
 }: ProductTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th className="w-16 px-4 py-3">Img</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3 text-right">Price (Birr)</th>
-              <th className="px-4 py-3 text-center">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+    <Card className="shadow-sm">
+      <CardContent className="p-0">
+        <Table className="min-w-[640px]">
+          <TableHeader>
+            <TableRow className="bg-muted/50 uppercase tracking-wide text-muted-foreground hover:bg-muted/50">
+              <TableHead className="w-16 px-4">Img</TableHead>
+              <TableHead className="px-4">Name</TableHead>
+              <TableHead className="px-4">Category</TableHead>
+              <TableHead className="px-4 text-right">Price (Birr)</TableHead>
+              <TableHead className="px-4 text-center">Status</TableHead>
+              <TableHead className="px-4 text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {loading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-orange-500" />
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <Spinner className="mx-auto size-8 text-primary" />
+                </TableCell>
+              </TableRow>
             ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                   No menu items yet
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               rows.map((product) => (
-                <tr
-                  key={product.id}
-                  className="border-b border-slate-100 transition hover:bg-slate-50/80"
-                >
-                  <td className="px-4 py-2">
+                <TableRow key={product.id}>
+                  <TableCell className="px-4 py-2">
                     {product.imageUrl ? (
                       <img
                         src={product.imageUrl}
                         alt=""
-                        className="h-10 w-10 rounded-md object-cover ring-1 ring-slate-200"
+                        className="size-10 rounded-md object-cover ring-1 ring-border"
                       />
                     ) : (
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-slate-100 text-[10px] text-slate-400">
-                        —
+                      <span className="inline-flex size-10 items-center justify-center rounded-md bg-muted text-[10px] text-muted-foreground">
+                        -
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm font-medium">
                     {product.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-sm text-muted-foreground">
                     {product.category}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm tabular-nums text-slate-800">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right text-sm tabular-nums">
                     {centsToBirrDisplay(product.unitPrice)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={
-                        product.active
-                          ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800'
-                          : 'inline-flex rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600'
-                      }
-                    >
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-center">
+                    <Badge variant={product.active ? 'default' : 'secondary'}>
                       {product.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <div className="inline-flex flex-wrap items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onEdit(product)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                        title="Edit"
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(product)} title="Edit">
+                        <Pencil data-icon="inline-start" aria-hidden />
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="sm"
                         disabled={archiving}
                         onClick={() => onArchive(product)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
                         title="Remove from active menu"
                       >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        <Trash2 data-icon="inline-start" aria-hidden />
                         Archive
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 }
-

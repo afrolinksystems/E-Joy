@@ -1,4 +1,17 @@
-import { Loader2, LogIn, ShieldCheck } from 'lucide-react'
+import { LogIn, ShieldCheck } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/alert'
+import { Button } from '../../../components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card'
+import { Field, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
+import { Spinner } from '../../../components/ui/spinner'
 import { usePlatformLogin } from '../hooks/usePlatformLogin'
 
 type LoginScreenProps = {
@@ -10,31 +23,55 @@ export function LoginScreen({ error, onLoggedIn }: LoginScreenProps) {
   const login = usePlatformLogin({ error, onLoggedIn })
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 px-4">
-      <form onSubmit={(event) => void login.submit(event)} className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-100 text-blue-700">
-            <ShieldCheck size={23} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-950">Super admin login</h1>
-            <p className="text-sm text-slate-500">Platform operations for E-Joy.</p>
-          </div>
-        </div>
-        <label className="mt-6 block text-sm font-semibold text-slate-700">
-          Email or phone
-          <input value={login.identifier} onChange={(event) => login.setIdentifier(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-        </label>
-        <label className="mt-4 block text-sm font-semibold text-slate-700">
-          Password
-          <input type="password" value={login.password} onChange={(event) => login.setPassword(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-        </label>
-        {login.formError ? <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{login.formError}</div> : null}
-        <button disabled={login.disabled} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-          {login.loading ? <Loader2 className="animate-spin" size={17} /> : <LogIn size={17} />}
-          Sign in
-        </button>
-      </form>
+    <main className="grid min-h-screen place-items-center bg-background px-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <form onSubmit={(event) => void login.submit(event)}>
+          <CardHeader className="grid-cols-[auto_1fr] items-center gap-x-3">
+            <div className="grid size-12 place-items-center rounded-lg bg-primary/10 text-primary">
+              <ShieldCheck />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Super admin login</CardTitle>
+              <CardDescription>Platform operations for E-Joy.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="platform-identifier">Email or phone</FieldLabel>
+                <Input
+                  id="platform-identifier"
+                  value={login.identifier}
+                  onChange={(event) => login.setIdentifier(event.target.value)}
+                  className="h-10"
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="platform-password">Password</FieldLabel>
+                <Input
+                  id="platform-password"
+                  type="password"
+                  value={login.password}
+                  onChange={(event) => login.setPassword(event.target.value)}
+                  className="h-10"
+                />
+              </Field>
+            </FieldGroup>
+            {login.formError ? (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Sign in failed</AlertTitle>
+                <AlertDescription>{login.formError}</AlertDescription>
+              </Alert>
+            ) : null}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={login.disabled} className="h-10 w-full">
+              {login.loading ? <Spinner data-icon="inline-start" /> : <LogIn data-icon="inline-start" />}
+              Sign in
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </main>
   )
 }

@@ -1,4 +1,9 @@
 import { Search } from 'lucide-react'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '../../../components/ui/input-group'
 
 type SearchBoxProps = {
   onChange: (value: string) => void
@@ -8,14 +13,15 @@ type SearchBoxProps = {
 
 export function SearchBox({ onChange, placeholder = 'Search', value }: SearchBoxProps) {
   return (
-    <div className="relative">
-      <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
-      <input
+    <InputGroup className="w-64">
+      <InputGroupAddon>
+        <Search />
+      </InputGroupAddon>
+      <InputGroupInput
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-64 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
       />
-    </div>
+    </InputGroup>
   )
 }

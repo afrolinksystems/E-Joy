@@ -1,4 +1,7 @@
-import { Loader2 } from 'lucide-react'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '../../components/ui/alert'
+import { Button } from '../../components/ui/button'
+import { Card, CardContent } from '../../components/ui/card'
+import { Spinner } from '../../components/ui/spinner'
 import { DashboardHeader } from './components/DashboardHeader'
 import { DashboardMetricGrid } from './components/DashboardMetricGrid'
 import { TopDishesChart } from './components/TopDishesChart'
@@ -10,21 +13,26 @@ export function DashboardPage() {
   const chartRows = topDishChartRows(metrics)
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <DashboardHeader shopId={shopId} />
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <span className="font-medium">Could not load metrics.</span> {error.message}
-          <button type="button" className="ml-3 text-orange-700 underline hover:text-orange-900" onClick={() => void refetch()}>
-            Retry
-          </button>
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Could not load metrics</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
+          <AlertAction>
+            <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          </AlertAction>
+        </Alert>
       ) : null}
       {loading && !metrics ? (
-        <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white py-16 text-slate-500">
-          <Loader2 className="mr-2 h-6 w-6 animate-spin text-orange-500" />
-          Loading dashboardâ€¦
-        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Spinner className="size-6 text-primary" />
+            Loading dashboard...
+          </CardContent>
+        </Card>
       ) : (
         <>
           <DashboardMetricGrid metrics={metrics} />

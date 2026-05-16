@@ -1,5 +1,17 @@
 import { Loader2 } from 'lucide-react'
 import type React from 'react'
+import { Button } from '../../../components/ui/button'
+import { Checkbox } from '../../../components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../components/ui/dialog'
+import { Field, FieldContent, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
 import type { ProductFormState } from '../products.types'
 import { ProductImageInput } from './ProductImageInput'
 
@@ -28,101 +40,92 @@ export function ProductFormDialog({
   onFormChange,
   onSubmit,
 }: ProductFormDialogProps) {
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
-      >
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <form onSubmit={onSubmit} className="mt-4 space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Name</span>
-            <input
-              required
-              value={form.name}
-              onChange={(event) =>
-                onFormChange((current) => ({ ...current, name: event.target.value }))
-              }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen) onClose()
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>Update the menu item details shown to customers.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="product-name">Name</FieldLabel>
+              <Input
+                id="product-name"
+                required
+                value={form.name}
+                onChange={(event) =>
+                  onFormChange((current) => ({ ...current, name: event.target.value }))
+                }
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="product-category">Category</FieldLabel>
+              <Input
+                id="product-category"
+                required
+                value={form.category}
+                onChange={(event) =>
+                  onFormChange((current) => ({
+                    ...current,
+                    category: event.target.value,
+                  }))
+                }
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="product-price">Price (Birr)</FieldLabel>
+              <Input
+                id="product-price"
+                required
+                inputMode="decimal"
+                value={form.priceBirr}
+                onChange={(event) =>
+                  onFormChange((current) => ({
+                    ...current,
+                    priceBirr: event.target.value,
+                  }))
+                }
+                placeholder="e.g. 380.00"
+                className="tabular-nums"
+              />
+            </Field>
+            <ProductImageInput
+              form={form}
+              uploadError={uploadError}
+              uploading={uploading}
+              onFileUpload={onFileUpload}
+              onFormChange={onFormChange}
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Category</span>
-            <input
-              required
-              value={form.category}
-              onChange={(event) =>
-                onFormChange((current) => ({
-                  ...current,
-                  category: event.target.value,
-                }))
-              }
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">
-              Price (Birr)
-            </span>
-            <input
-              required
-              inputMode="decimal"
-              value={form.priceBirr}
-              onChange={(event) =>
-                onFormChange((current) => ({
-                  ...current,
-                  priceBirr: event.target.value,
-                }))
-              }
-              placeholder="e.g. 380.00"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tabular-nums outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
-            />
-          </label>
-          <ProductImageInput
-            form={form}
-            uploadError={uploadError}
-            uploading={uploading}
-            onFileUpload={onFileUpload}
-            onFormChange={onFormChange}
-          />
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.active}
-              onChange={(event) =>
-                onFormChange((current) => ({
-                  ...current,
-                  active: event.target.checked,
-                }))
-              }
-              className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
-            />
-            <span className="text-sm text-slate-700">Active (on menu)</span>
-          </label>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
+            <Field orientation="horizontal">
+              <Checkbox
+                checked={form.active}
+                onCheckedChange={(checked) =>
+                  onFormChange((current) => ({
+                    ...current,
+                    active: checked === true,
+                  }))
+                }
+              />
+              <FieldContent>
+                <FieldLabel>Active (on menu)</FieldLabel>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 data-icon="inline-start" className="animate-spin" /> : null}
               Save
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
-

@@ -14,7 +14,7 @@ type ConsoleLayoutProps = {
 
 export function ConsoleLayout({ children, nav, onLogout, onSelectPage, page, session }: ConsoleLayoutProps) {
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen">
         <DesktopNav activePage={page} nav={nav} onSelect={onSelectPage} />
         <section className="min-w-0 flex-1">

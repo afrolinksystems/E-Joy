@@ -1,4 +1,5 @@
 import { Loader2, Plus } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
 
 type AddTableButtonProps = {
   disabled: boolean
@@ -8,20 +9,16 @@ type AddTableButtonProps = {
 
 export function AddTableButton({ disabled, loading, onAdd }: AddTableButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onAdd}
       disabled={disabled}
       title="Add table at center of map"
-      className="fixed bottom-8 right-8 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition hover:bg-orange-600 disabled:opacity-50"
+      className="fixed bottom-8 right-8 z-30 size-14 rounded-full shadow-lg"
       aria-label="Add table"
+      size="icon-lg"
     >
-      {loading ? (
-        <Loader2 className="h-6 w-6 animate-spin" />
-      ) : (
-        <Plus className="h-7 w-7" />
-      )}
-    </button>
+      {loading ? <Loader2 className="animate-spin" /> : <Plus />}
+    </Button>
   )
 }
-

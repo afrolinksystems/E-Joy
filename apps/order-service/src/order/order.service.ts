@@ -9,7 +9,7 @@ import {
 import { PubSub } from 'graphql-subscriptions';
 import type { Prisma, Product } from '@prisma/client';
 import { OrderStatus as PrismaOrderStatus } from '@prisma/client';
-import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { TableService } from '../table/table.service';
 import { InventoryService } from './inventory.service';
@@ -49,31 +49,38 @@ import {
   MarkDeliveryOrderReadyInput,
   UpdateAddressInput,
 } from './order.inputs';
-
-class DomainError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-type CallbackPayload = {
-  nonce: string;
-  timestamp: number;
-  requestId?: string;
-  sourceIp?: string;
-};
-
-type CallbackRequestMeta = {
-  requestId?: string;
-  sourceIp?: string;
-};
+import { DomainError } from './domain/domain-error';
+import { buildPickupCode } from './domain/order-code';
+import { buildServerAuthoritativeLineItems } from './domain/order-pricing';
+import {
+  buildRequestHash,
+  resolveCreateOrderDeliveryTypeAndTableRef,
+} from './domain/order-request';
+import {
+  buildCallbackPayloadHash,
+  parseAndValidateCallbackPayload,
+  type CallbackRequestMeta,
+} from './domain/payment-callback';
+import {
+  initialMerchantStatus,
+  merchantStatusFromOrderState,
+  toMerchantDispatchOrder,
+  toOrderModel,
+} from './infrastructure/order.mapper';
+import { isUniqueConstraintError } from './infrastructure/prisma-error.util';
+import {
+  OrderAddressService,
+  type UserAddressResult,
+} from './application/order-address.service';
+import { DeliveryConfigService } from './application/delivery-config.service';
+import { ShopMenuQueryService } from './application/shop-menu-query.service';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
+  private readonly addressWorkflow: OrderAddressService;
+  private readonly deliveryConfigWorkflow: DeliveryConfigService;
+  private readonly shopMenuQueryWorkflow: ShopMenuQueryService;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -86,7 +93,17 @@ export class OrderService {
     private readonly tableService: TableService,
     private readonly telebirrService: TelebirrService,
     @Inject('PUB_SUB') private readonly pubSub: PubSub,
-  ) {}
+    addressWorkflow?: OrderAddressService,
+    deliveryConfigWorkflow?: DeliveryConfigService,
+    shopMenuQueryWorkflow?: ShopMenuQueryService,
+  ) {
+    this.addressWorkflow =
+      addressWorkflow ?? new OrderAddressService(this.prisma);
+    this.deliveryConfigWorkflow =
+      deliveryConfigWorkflow ?? new DeliveryConfigService(this.prisma);
+    this.shopMenuQueryWorkflow =
+      shopMenuQueryWorkflow ?? new ShopMenuQueryService(this.prisma);
+  }
 
   /**
    * REST entrypoint for Telebirr notify URL; delegates to confirmPaymentCallback with HMAC-compatible payload.
@@ -167,7 +184,7 @@ export class OrderService {
         where: { id: order.id },
         data: {
           state: targetState,
-          status: this.merchantStatusFromOrderState(targetState),
+          status: merchantStatusFromOrderState(targetState),
           paymentState: targetPaymentState,
           providerTxnId: `mock_${Date.now()}`,
           paidAt: new Date(),
@@ -215,9 +232,9 @@ export class OrderService {
     }
 
     const { tableRef, deliveryType } =
-      this.resolveCreateOrderDeliveryTypeAndTableRef(input);
+      resolveCreateOrderDeliveryTypeAndTableRef(input);
 
-    const requestHash = this.buildRequestHash(input);
+    const requestHash = buildRequestHash(input);
     const existing = await this.prisma.order.findUnique({
       where: {
         shopId_idempotencyKey: {
@@ -236,7 +253,7 @@ export class OrderService {
           },
         };
       }
-      return { ok: true, order: this.toOrderModel(existing) };
+      return { ok: true, order: toOrderModel(existing) };
     }
 
     let resolvedTableId: string | undefined;
@@ -275,7 +292,7 @@ export class OrderService {
     const productsById = new Map<string, Product>(
       products.map((product) => [product.id, product]),
     );
-    const { itemRows, subtotalAmount } = this.buildServerAuthoritativeLineItems(
+    const { itemRows, subtotalAmount } = buildServerAuthoritativeLineItems(
       input.items,
       productsById,
     );
@@ -342,7 +359,7 @@ export class OrderService {
           itemRows,
           addedSubtotal: subtotalAmount,
         });
-        return { ok: true, order: this.toOrderModel(appended) };
+        return { ok: true, order: toOrderModel(appended) };
       } catch (error) {
         if (error instanceof DomainError) {
           return {
@@ -353,7 +370,7 @@ export class OrderService {
             },
           };
         }
-        if (this.isUniqueConstraintError(error)) {
+        if (isUniqueConstraintError(error)) {
           const replay = await this.prisma.order.findUnique({
             where: {
               shopId_idempotencyKey: {
@@ -363,7 +380,7 @@ export class OrderService {
             },
           });
           if (replay) {
-            return { ok: true, order: this.toOrderModel(replay) };
+            return { ok: true, order: toOrderModel(replay) };
           }
           return {
             ok: false,
@@ -509,11 +526,9 @@ export class OrderService {
             addressId: input.addressId,
             deliveryFee,
             pickupCode:
-              deliveryType === DeliveryType.PICKUP
-                ? this.buildPickupCode()
-                : null,
+              deliveryType === DeliveryType.PICKUP ? buildPickupCode() : null,
             state: initialOrderState,
-            status: this.initialMerchantStatus(initialOrderState),
+            status: initialMerchantStatus(initialOrderState),
             paymentMethod: input.paymentMethod,
             paymentState,
             subtotalAmount,
@@ -569,7 +584,7 @@ export class OrderService {
       if (resolvedTableId) {
         void this.emitTableStatusChanged(input.shopId, resolvedTableId);
       }
-      return { ok: true, order: this.toOrderModel(created) };
+      return { ok: true, order: toOrderModel(created) };
     } catch (error) {
       if (error instanceof DomainError) {
         return {
@@ -580,7 +595,7 @@ export class OrderService {
           },
         };
       }
-      if (this.isUniqueConstraintError(error)) {
+      if (isUniqueConstraintError(error)) {
         const replay = await this.prisma.order.findUnique({
           where: {
             shopId_idempotencyKey: {
@@ -599,7 +614,7 @@ export class OrderService {
               },
             };
           }
-          return { ok: true, order: this.toOrderModel(replay) };
+          return { ok: true, order: toOrderModel(replay) };
         }
         return {
           ok: false,
@@ -766,23 +781,19 @@ export class OrderService {
       },
     });
     if (existingAttempt?.state === PaymentState.SUCCESS && callbackSuccess) {
-      return { ok: true, order: this.toOrderModel(order) };
+      return { ok: true, order: toOrderModel(order) };
     }
 
     try {
-      const callbackPayload = this.parseAndValidateCallbackPayload(
-        input.rawPayload,
-      );
-      const payloadHash = createHash('sha256')
-        .update(input.rawPayload)
-        .digest('hex');
+      const callbackPayload = parseAndValidateCallbackPayload(input.rawPayload);
+      const payloadHash = buildCallbackPayloadHash(input.rawPayload);
       const existingReceipt =
         await this.prisma.paymentCallbackReceipt.findFirst({
           where: { providerTxnId: input.providerTxnId },
         });
       if (existingReceipt) {
         if (existingReceipt.payloadHash === payloadHash) {
-          return { ok: true, order: this.toOrderModel(order) };
+          return { ok: true, order: toOrderModel(order) };
         }
         this.paymentMetricsService.markTxnConflict();
         return {
@@ -873,7 +884,7 @@ export class OrderService {
           where: { id: order.id },
           data: {
             state: targetState,
-            status: this.merchantStatusFromOrderState(targetState),
+            status: merchantStatusFromOrderState(targetState),
             paymentState: targetPaymentState,
             providerTxnId: input.providerTxnId,
             paidAt: callbackSuccess ? new Date() : order.paidAt,
@@ -914,7 +925,7 @@ export class OrderService {
         );
       }
 
-      return { ok: true, order: this.toOrderModel(updatedOrder) };
+      return { ok: true, order: toOrderModel(updatedOrder) };
     } catch (error) {
       if (error instanceof DomainError) {
         return {
@@ -925,7 +936,7 @@ export class OrderService {
           },
         };
       }
-      if (this.isUniqueConstraintError(error)) {
+      if (isUniqueConstraintError(error)) {
         this.paymentMetricsService.markReplayRejected();
         return {
           ok: false,
@@ -1042,7 +1053,7 @@ export class OrderService {
       });
       return next;
     });
-    return { ok: true, order: this.toOrderModel(updated) };
+    return { ok: true, order: toOrderModel(updated) };
   }
 
   async acceptDeliveryOrder(
@@ -1104,7 +1115,7 @@ export class OrderService {
       toState: OrderState.PREPARING,
       deliveryType: order.deliveryType,
     });
-    return { ok: true, order: this.toOrderModel(next) };
+    return { ok: true, order: toOrderModel(next) };
   }
 
   async markDeliveryOrderReady(
@@ -1167,7 +1178,7 @@ export class OrderService {
       toState: OrderState.READY,
       deliveryType: order.deliveryType,
     });
-    return { ok: true, order: this.toOrderModel(next) };
+    return { ok: true, order: toOrderModel(next) };
   }
 
   async deliveryOrders(
@@ -1186,7 +1197,7 @@ export class OrderService {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    return rows.map((row) => this.toOrderModel(row));
+    return rows.map((row) => toOrderModel(row));
   }
 
   /**
@@ -1298,7 +1309,7 @@ export class OrderService {
         table: { select: { name: true } },
       },
     });
-    return rows.map((o) => this.toMerchantDispatchOrder(o));
+    return rows.map((o) => toMerchantDispatchOrder(o));
   }
 
   /**
@@ -1408,7 +1419,7 @@ export class OrderService {
       void this.emitTableStatusChanged(shopId, order.tableId);
     }
 
-    return this.toMerchantDispatchOrder(updated);
+    return toMerchantDispatchOrder(updated);
   }
 
   private async emitTableStatusChanged(
@@ -1427,129 +1438,6 @@ export class OrderService {
         `emitTableStatusChanged failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-  }
-
-  private initialMerchantStatus(state: OrderState): PrismaOrderStatus {
-    switch (state) {
-      case OrderState.PREPARING:
-        return PrismaOrderStatus.PREPARING;
-      case OrderState.COMPLETED:
-        return PrismaOrderStatus.COMPLETED;
-      case OrderState.CANCELLED:
-        return PrismaOrderStatus.CANCELLED;
-      default:
-        return PrismaOrderStatus.PENDING;
-    }
-  }
-
-  private merchantStatusFromOrderState(state: string): PrismaOrderStatus {
-    switch (state) {
-      case 'PREPARING':
-      case 'READY':
-        return PrismaOrderStatus.PREPARING;
-      case 'COMPLETED':
-        return PrismaOrderStatus.COMPLETED;
-      case 'CANCELLED':
-      case 'REFUNDED':
-        return PrismaOrderStatus.CANCELLED;
-      case 'PAID':
-        return PrismaOrderStatus.PENDING;
-      default:
-        return PrismaOrderStatus.PENDING;
-    }
-  }
-
-  private toMerchantDispatchOrder(o: {
-    id: string;
-    orderNo: string;
-    totalAmount: number;
-    status: PrismaOrderStatus;
-    state: string;
-    createdAt: Date;
-    acceptedAt: Date | null;
-    completedAt: Date | null;
-    shop: { name: string };
-    table: { name: string } | null;
-    items: Array<{
-      quantity: number;
-      productNameSnapshot: string;
-      product: { name: string; imageUrl: string | null } | null;
-    }>;
-  }): MerchantDispatchOrderModel {
-    return {
-      id: o.id,
-      orderNo: o.orderNo,
-      totalAmount: o.totalAmount,
-      status: o.status as MerchantOrderStatus,
-      orderState: o.state as OrderState,
-      createdAt: o.createdAt.toISOString(),
-      shopName: o.shop.name,
-      tableName: o.table?.name ?? null,
-      acceptedAt: o.acceptedAt?.toISOString() ?? null,
-      completedAt: o.completedAt?.toISOString() ?? null,
-      items: o.items.map((it) => ({
-        productName: it.product?.name ?? it.productNameSnapshot,
-        quantity: it.quantity,
-        imageUrl: it.product?.imageUrl ?? null,
-      })),
-    };
-  }
-
-  private toOrderModel(order: {
-    id: string;
-    orderNo: string;
-    state: string;
-    paymentState: string;
-    totalAmount: number;
-    deliveryType?: string;
-  }): OrderModel {
-    return {
-      id: order.id,
-      orderNo: order.orderNo,
-      state: order.state as OrderState,
-      paymentState: order.paymentState as PaymentState,
-      totalAmount: order.totalAmount,
-      deliveryType: (order.deliveryType ??
-        DeliveryType.DINE_IN) as DeliveryType,
-    };
-  }
-
-  /**
-   * 仅使用 Prisma 返回的 unitPrice（分，整数）与行数量计算行小计与 subtotalAmount。
-   * 不读取 input 中任何价格类字段（CreateOrderInput 亦不含此类字段）。
-   */
-  private buildServerAuthoritativeLineItems(
-    orderLines: CreateOrderInput['items'],
-    productsById: Map<string, Product>,
-  ): {
-    itemRows: Array<{
-      productId: string;
-      productNameSnapshot: string;
-      unitPriceSnapshot: number;
-      quantity: number;
-      subtotal: number;
-      remark?: string;
-    }>;
-    subtotalAmount: number;
-  } {
-    let subtotalAmount = 0;
-    const itemRows = orderLines.map((line) => {
-      // 与上文 findMany 校验一致：每个 line.productId 均在 productsById 中
-      const product = productsById.get(line.productId)!;
-      const unitPriceCents = product.unitPrice;
-      const qty = line.amount;
-      const lineSubtotalCents = unitPriceCents * qty;
-      subtotalAmount += lineSubtotalCents;
-      return {
-        productId: product.id,
-        productNameSnapshot: product.name,
-        unitPriceSnapshot: unitPriceCents,
-        quantity: qty,
-        subtotal: lineSubtotalCents,
-        remark: line.remark,
-      };
-    });
-    return { itemRows, subtotalAmount };
   }
 
   /**
@@ -1714,211 +1602,27 @@ export class OrderService {
   /**
    * 任意桌台标识（tableId 或 tableNumber）存在时强制堂食，且不产生配送费。
    */
-  private resolveCreateOrderDeliveryTypeAndTableRef(input: CreateOrderInput): {
-    tableRef: string;
-    deliveryType: DeliveryType;
-  } {
-    const tableRef = input.tableId?.trim() || input.tableNumber?.trim() || '';
-    let deliveryType = input.deliveryType ?? DeliveryType.DINE_IN;
-    if (tableRef) {
-      deliveryType = DeliveryType.DINE_IN;
-    }
-    return { tableRef, deliveryType };
-  }
-
-  private buildRequestHash(input: CreateOrderInput): string {
-    const { deliveryType } =
-      this.resolveCreateOrderDeliveryTypeAndTableRef(input);
-    const normalized = {
-      shopId: input.shopId,
-      tableId: input.tableId ?? '',
-      tableNumber: input.tableNumber ?? '',
-      idempotencyKey: input.idempotencyKey,
-      paymentMethod: input.paymentMethod,
-      deliveryType,
-      addressId: input.addressId ?? '',
-      couponCode: input.couponCode ?? '',
-      note: input.note ?? '',
-      items: [...input.items]
-        .map((item) => ({
-          productId: item.productId,
-          amount: item.amount,
-          remark: item.remark ?? '',
-        }))
-        .sort((a, b) => a.productId.localeCompare(b.productId)),
-    };
-    return createHash('sha256')
-      .update(JSON.stringify(normalized))
-      .digest('hex');
-  }
-
-  private parseAndValidateCallbackPayload(rawPayload: string): CallbackPayload {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawPayload);
-    } catch {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_INVALID_PAYLOAD',
-        'Invalid callback payload',
-      );
-    }
-
-    const payload = parsed as Partial<CallbackPayload>;
-    if (!payload.nonce || typeof payload.nonce !== 'string') {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_INVALID_PAYLOAD',
-        'Missing callback nonce',
-      );
-    }
-    if (
-      typeof payload.timestamp !== 'number' ||
-      !Number.isFinite(payload.timestamp)
-    ) {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_INVALID_PAYLOAD',
-        'Missing callback timestamp',
-      );
-    }
-
-    const now = Date.now();
-    const driftMs = Math.abs(now - payload.timestamp);
-    const allowedDriftMs = 5 * 60 * 1000;
-    if (driftMs > allowedDriftMs) {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_EXPIRED',
-        'Payment callback is outside allowed time window',
-      );
-    }
-
-    if (payload.requestId && typeof payload.requestId !== 'string') {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_INVALID_PAYLOAD',
-        'Invalid callback requestId',
-      );
-    }
-    if (payload.sourceIp && typeof payload.sourceIp !== 'string') {
-      throw new DomainError(
-        'PAYMENT_CALLBACK_INVALID_PAYLOAD',
-        'Invalid callback sourceIp',
-      );
-    }
-
-    return {
-      nonce: payload.nonce,
-      timestamp: payload.timestamp,
-      requestId: payload.requestId,
-      sourceIp: payload.sourceIp,
-    };
-  }
-
-  private isUniqueConstraintError(error: unknown): boolean {
-    if (!error || typeof error !== 'object') {
-      return false;
-    }
-    const code = (error as { code?: string }).code;
-    return code === 'P2002';
-  }
-
-  async myAddresses(userId?: string): Promise<
-    Array<{
-      id: string;
-      receiverName: string;
-      phone: string;
-      detailAddress: string;
-      isDefault: boolean;
-    }>
-  > {
-    const actorUserId = userId ?? 'user_placeholder';
-    const rows = await this.prisma.userAddress.findMany({
-      where: { userId: actorUserId },
-      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
-    });
-    return rows.map((row) => ({
-      id: row.id,
-      receiverName: row.receiverName,
-      phone: row.phone,
-      detailAddress: row.detailAddress,
-      isDefault: row.isDefault,
-    }));
+  async myAddresses(userId?: string): Promise<UserAddressResult[]> {
+    return this.addressWorkflow.myAddresses(userId);
   }
 
   async createAddress(
     input: CreateAddressInput,
     userId?: string,
-  ): Promise<{
-    id: string;
-    receiverName: string;
-    phone: string;
-    detailAddress: string;
-    isDefault: boolean;
-  }> {
-    const actorUserId = userId ?? 'user_placeholder';
-    const created = await this.prisma.userAddress.create({
-      data: {
-        userId: actorUserId,
-        receiverName: input.receiverName,
-        phone: input.phone,
-        detailAddress: input.detailAddress,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        isDefault: input.isDefault ?? false,
-      },
-    });
-    return {
-      id: created.id,
-      receiverName: created.receiverName,
-      phone: created.phone,
-      detailAddress: created.detailAddress,
-      isDefault: created.isDefault,
-    };
+  ): Promise<UserAddressResult> {
+    return this.addressWorkflow.createAddress(input, userId);
   }
 
   async updateAddress(
     addressId: string,
     input: UpdateAddressInput,
     userId?: string,
-  ): Promise<{
-    id: string;
-    receiverName: string;
-    phone: string;
-    detailAddress: string;
-    isDefault: boolean;
-  }> {
-    const actorUserId = userId ?? 'user_placeholder';
-    const updated = await this.prisma.userAddress.updateMany({
-      where: { id: addressId, userId: actorUserId },
-      data: {
-        receiverName: input.receiverName,
-        phone: input.phone,
-        detailAddress: input.detailAddress,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        isDefault: input.isDefault ?? false,
-      },
-    });
-    if (updated.count === 0) {
-      throw new DomainError('ADDRESS_NOT_FOUND', 'Address not found');
-    }
-    const latest = await this.prisma.userAddress.findMany({
-      where: { id: addressId, userId: actorUserId },
-      take: 1,
-    });
-    const row = latest[0];
-    return {
-      id: row.id,
-      receiverName: row.receiverName,
-      phone: row.phone,
-      detailAddress: row.detailAddress,
-      isDefault: row.isDefault,
-    };
+  ): Promise<UserAddressResult> {
+    return this.addressWorkflow.updateAddress(addressId, input, userId);
   }
 
   async deleteAddress(addressId: string, userId?: string): Promise<boolean> {
-    const actorUserId = userId ?? 'user_placeholder';
-    const res = await this.prisma.userAddress.deleteMany({
-      where: { id: addressId, userId: actorUserId },
-    });
-    return res.count > 0;
+    return this.addressWorkflow.deleteAddress(addressId, userId);
   }
 
   async deliveryConfig(shopId: string): Promise<{
@@ -1934,26 +1638,7 @@ export class OrderService {
     pickupOpenTime?: string;
     deliveryOpenTime?: string;
   }> {
-    const cfg = await this.prisma.shopDeliveryConfig.findUnique({
-      where: { shopId },
-    });
-    return {
-      deliveryEnabled: cfg?.deliveryEnabled ?? false,
-      pickupEnabled: cfg?.pickupEnabled ?? true,
-      dineInEnabled: cfg?.dineInEnabled ?? true,
-      deliveryRadius: cfg?.deliveryRadius ?? undefined,
-      deliveryFeeType: (cfg?.deliveryFeeType ??
-        DeliveryFeeType.FIXED) as DeliveryFeeType,
-      fixedFee: cfg?.fixedFee ?? undefined,
-      freeDeliveryThreshold: cfg?.freeDeliveryThreshold ?? undefined,
-      deliveryAcceptMode: (cfg as { deliveryAutoAccept?: boolean } | null)
-        ?.deliveryAutoAccept
-        ? DeliveryAcceptMode.AUTO
-        : DeliveryAcceptMode.MANUAL,
-      dineInOpenTime: cfg?.dineInOpenTime ?? undefined,
-      pickupOpenTime: cfg?.pickupOpenTime ?? undefined,
-      deliveryOpenTime: cfg?.deliveryOpenTime ?? undefined,
-    };
+    return this.deliveryConfigWorkflow.deliveryConfig(shopId);
   }
 
   async updateDeliveryConfig(
@@ -1972,118 +1657,18 @@ export class OrderService {
     pickupOpenTime?: string;
     deliveryOpenTime?: string;
   }> {
-    const cfg = await this.prisma.shopDeliveryConfig.upsert({
-      where: { shopId },
-      update: {
-        deliveryEnabled: input.deliveryEnabled ?? undefined,
-        pickupEnabled: input.pickupEnabled ?? undefined,
-        dineInEnabled: input.dineInEnabled ?? undefined,
-        deliveryRadius: input.deliveryRadius ?? undefined,
-        deliveryFeeType: input.deliveryFeeType ?? undefined,
-        fixedFee: input.fixedFee ?? undefined,
-        freeDeliveryThreshold: input.freeDeliveryThreshold ?? undefined,
-        dineInOpenTime: input.dineInOpenTime ?? undefined,
-        pickupOpenTime: input.pickupOpenTime ?? undefined,
-        deliveryOpenTime: input.deliveryOpenTime ?? undefined,
-        deliveryAutoAccept:
-          input.deliveryAcceptMode === undefined
-            ? undefined
-            : input.deliveryAcceptMode === DeliveryAcceptMode.AUTO,
-      } as never,
-      create: {
-        shopId,
-        deliveryEnabled: input.deliveryEnabled ?? false,
-        pickupEnabled: input.pickupEnabled ?? true,
-        dineInEnabled: input.dineInEnabled ?? true,
-        deliveryRadius: input.deliveryRadius,
-        deliveryFeeType: input.deliveryFeeType ?? DeliveryFeeType.FIXED,
-        fixedFee: input.fixedFee,
-        freeDeliveryThreshold: input.freeDeliveryThreshold,
-        dineInOpenTime: input.dineInOpenTime,
-        pickupOpenTime: input.pickupOpenTime,
-        deliveryOpenTime: input.deliveryOpenTime,
-        deliveryAutoAccept:
-          input.deliveryAcceptMode === DeliveryAcceptMode.AUTO,
-      } as never,
-    });
-    return {
-      deliveryEnabled: cfg.deliveryEnabled,
-      pickupEnabled: cfg.pickupEnabled,
-      dineInEnabled: cfg.dineInEnabled,
-      deliveryRadius: cfg.deliveryRadius ?? undefined,
-      deliveryFeeType: cfg.deliveryFeeType as DeliveryFeeType,
-      fixedFee: cfg.fixedFee ?? undefined,
-      freeDeliveryThreshold: cfg.freeDeliveryThreshold ?? undefined,
-      deliveryAcceptMode: (cfg as { deliveryAutoAccept?: boolean })
-        .deliveryAutoAccept
-        ? DeliveryAcceptMode.AUTO
-        : DeliveryAcceptMode.MANUAL,
-      dineInOpenTime: cfg.dineInOpenTime ?? undefined,
-      pickupOpenTime: cfg.pickupOpenTime ?? undefined,
-      deliveryOpenTime: cfg.deliveryOpenTime ?? undefined,
-    };
+    return this.deliveryConfigWorkflow.updateDeliveryConfig(shopId, input);
   }
 
   /** 顾客端公开：门店上架商品菜单，单价为数据库 unitPrice（分，整数） */
   async shopMenuProducts(shopId: string): Promise<ShopMenuProductModel[]> {
-    const rows = await this.prisma.product.findMany({
-      where: { shopId, active: true, status: 'ACTIVE' } as Record<
-        string,
-        unknown
-      >,
-      orderBy: { name: 'asc' },
-      take: 500,
-    });
-    return rows.map((row) => {
-      const r = row as Product & {
-        category?: string;
-        imageUrl?: string | null;
-      };
-      return {
-        id: r.id,
-        name: r.name,
-        category: typeof r.category === 'string' ? r.category : 'General',
-        unitPrice: r.unitPrice,
-        imageUrl:
-          typeof r.imageUrl === 'string' && r.imageUrl.length > 0
-            ? r.imageUrl
-            : undefined,
-      };
-    });
+    return this.shopMenuQueryWorkflow.shopMenuProducts(shopId);
   }
 
   async checkDelivery(
     shopId: string,
     address: AddressInput,
   ): Promise<{ deliverable: boolean; estimatedFee: number; reason?: string }> {
-    const cfg = await this.prisma.shopDeliveryConfig.findUnique({
-      where: { shopId },
-    });
-    if (!cfg?.deliveryEnabled) {
-      return {
-        deliverable: false,
-        estimatedFee: 0,
-        reason: 'Delivery is not enabled for this shop',
-      };
-    }
-    if (
-      cfg.deliveryRadius &&
-      (typeof address.latitude !== 'number' ||
-        typeof address.longitude !== 'number')
-    ) {
-      return {
-        deliverable: false,
-        estimatedFee: 0,
-        reason: 'Address coordinates are required for radius check',
-      };
-    }
-    return {
-      deliverable: true,
-      estimatedFee: cfg.fixedFee ?? 0,
-    };
-  }
-
-  private buildPickupCode(): string {
-    return `${Math.floor(100000 + Math.random() * 900000)}`;
+    return this.deliveryConfigWorkflow.checkDelivery(shopId, address);
   }
 }

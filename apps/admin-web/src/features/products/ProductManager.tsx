@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { ProductFormDialog } from './components/ProductFormDialog'
 import { ProductHeader } from './components/ProductHeader'
 import { ProductTable } from './components/ProductTable'
@@ -10,22 +11,22 @@ export function ProductManager() {
   const gqlError = state.error?.message
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <ProductHeader shopId={state.shopId} onCreate={state.openCreate} />
       {state.toast ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-900 shadow-sm"
-        >
-          {state.toast.message}
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Product action failed</AlertTitle>
+          <AlertDescription>{state.toast.message}</AlertDescription>
+        </Alert>
       ) : null}
       {gqlError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          Failed to load: {gqlError}. Ensure order-service is running and Your
-          secure admin session needs the{' '}
-          <code className="rounded bg-red-100 px-1">staff:read</code> scope.
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Failed to load</AlertTitle>
+          <AlertDescription>
+            {gqlError}. Ensure order-service is running and your secure admin session needs the{' '}
+            <code className="rounded bg-destructive/10 px-1">staff:read</code> scope.
+          </AlertDescription>
+        </Alert>
       ) : null}
       <ProductTable
         archiving={state.archiving}
@@ -49,4 +50,3 @@ export function ProductManager() {
     </div>
   )
 }
-

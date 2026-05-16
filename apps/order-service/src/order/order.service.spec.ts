@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { DeliveryType, PaymentMethod } from './order.types';
+import { buildRequestHash } from './domain/order-request';
 
 function inventoryStub() {
   return { atomicDeduct: jest.fn().mockResolvedValue(true) };
@@ -94,8 +95,7 @@ describe('OrderService.createOrder', () => {
   });
 
   it('returns existing order for idempotent replay with same payload', async () => {
-    const probe = buildService({ order: { findUnique: jest.fn() } });
-    const requestHash = (probe as any).buildRequestHash(baseInput);
+    const requestHash = buildRequestHash(baseInput);
     const service = buildService({
       order: {
         findUnique: jest.fn().mockResolvedValue({
@@ -170,22 +170,7 @@ describe('OrderService.createOrder', () => {
       markReplayRejected: jest.fn(),
       markTxnConflict: jest.fn(),
     };
-    const probe = new OrderService(
-      {
-        order: {
-          findUnique: jest.fn(),
-          findFirst: jest.fn().mockResolvedValue(null),
-        },
-      } as never,
-      paymentProvider as never,
-      eventProducer as never,
-      paymentMetrics as never,
-      inventoryStub() as never,
-      tableServiceStub(),
-      telebirrStub(),
-      pubSubStub(),
-    );
-    const requestHash = (probe as any).buildRequestHash(baseInput);
+    const requestHash = buildRequestHash(baseInput);
     const dupErr = Object.assign(new Error('Unique constraint'), {
       code: 'P2002',
     });

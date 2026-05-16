@@ -15,6 +15,9 @@ import { AppService } from './app.service';
 import { OrderResolver } from './order/order.resolver';
 import { OrderService } from './order/order.service';
 import { InventoryService } from './order/inventory.service';
+import { OrderAddressService } from './order/application/order-address.service';
+import { DeliveryConfigService } from './order/application/delivery-config.service';
+import { ShopMenuQueryService } from './order/application/shop-menu-query.service';
 import { PrismaService } from './prisma/prisma.service';
 import { PRISMA_CLIENT } from './prisma/prisma.token';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -129,6 +132,9 @@ import type { GraphQLFormattedError } from 'graphql';
     OrderResolver,
     OrderService,
     InventoryService,
+    OrderAddressService,
+    DeliveryConfigService,
+    ShopMenuQueryService,
     ProductResolver,
     ProductService,
     ShopResolver,

@@ -1,3 +1,5 @@
+import { Card } from '../../components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../../components/ui/empty'
 import { SearchBox } from '../platform-console/components/SearchBox'
 import { TableHeader } from '../platform-console/components/TableHeader'
 import { RestaurantDetail } from './components/RestaurantDetail'
@@ -9,7 +11,7 @@ export function RestaurantsPage() {
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
-      <section className="rounded-xl border border-slate-200 bg-white">
+      <Card>
         <TableHeader title="Restaurants" action={<SearchBox value={page.search} onChange={page.setSearch} />} />
         <RestaurantsTable
           shops={page.shops}
@@ -17,11 +19,18 @@ export function RestaurantsPage() {
           onSelect={page.setSelectedId}
           onToggle={(shop) => void page.toggleShop(shop)}
         />
-      </section>
+      </Card>
       {page.selected ? (
         <RestaurantDetail shopId={page.selected} />
       ) : (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Select a restaurant.</section>
+        <Card>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Select a restaurant.</EmptyTitle>
+              <EmptyDescription>Choose a row to inspect settings, managers, and payments.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </Card>
       )}
     </div>
   )

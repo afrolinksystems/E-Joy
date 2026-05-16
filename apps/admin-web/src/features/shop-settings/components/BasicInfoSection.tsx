@@ -1,4 +1,8 @@
 import type React from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Field, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
+import { Textarea } from '../../../components/ui/textarea'
 import type { ShopSettingsFormState } from '../shop-settings.types'
 
 type BasicInfoSectionProps = {
@@ -8,55 +12,57 @@ type BasicInfoSectionProps = {
 
 export function BasicInfoSection({ form, onFormChange }: BasicInfoSectionProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900">Basic information</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Public-facing name and contact details
-      </p>
-      <div className="mt-4 space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">Shop name *</span>
-          <input
-            required
-            value={form.name}
-            onChange={(event) =>
-              onFormChange((current) => ({ ...current, name: event.target.value }))
-            }
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2 disabled:bg-slate-50 disabled:text-slate-500"
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">Description</span>
-          <textarea
-            value={form.description}
-            onChange={(event) =>
-              onFormChange((current) => ({
-                ...current,
-                description: event.target.value,
-              }))
-            }
-            rows={4}
-            placeholder="Briefly describe your concept, hours, or specialties"
-            className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2 disabled:bg-slate-50"
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">Contact phone</span>
-          <input
-            inputMode="tel"
-            value={form.contactPhone}
-            onChange={(event) =>
-              onFormChange((current) => ({
-                ...current,
-                contactPhone: event.target.value,
-              }))
-            }
-            placeholder="+251 ..."
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2 disabled:bg-slate-50"
-          />
-        </label>
-      </div>
-    </section>
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle>Basic information</CardTitle>
+        <CardDescription>Public-facing name and contact details</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="settings-shop-name">Shop name *</FieldLabel>
+            <Input
+              id="settings-shop-name"
+              required
+              value={form.name}
+              onChange={(event) =>
+                onFormChange((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="settings-description">Description</FieldLabel>
+            <Textarea
+              id="settings-description"
+              value={form.description}
+              onChange={(event) =>
+                onFormChange((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+              rows={4}
+              placeholder="Briefly describe your concept, hours, or specialties"
+              className="resize-y"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="settings-contact-phone">Contact phone</FieldLabel>
+            <Input
+              id="settings-contact-phone"
+              inputMode="tel"
+              value={form.contactPhone}
+              onChange={(event) =>
+                onFormChange((current) => ({
+                  ...current,
+                  contactPhone: event.target.value,
+                }))
+              }
+              placeholder="+251 ..."
+            />
+          </Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
   )
 }
-

@@ -61,8 +61,7 @@ export function ThemePreview({ form, previewTokens }: ThemePreviewProps) {
               </div>
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-sm font-semibold">260 ETB</div>
-                <button
-                  type="button"
+                <span
                   className="rounded-full px-3 py-1.5 text-xs font-semibold"
                   style={{
                     background: 'var(--primary)',
@@ -70,7 +69,7 @@ export function ThemePreview({ form, previewTokens }: ThemePreviewProps) {
                   }}
                 >
                   Add
-                </button>
+                </span>
               </div>
             </div>
             <div
@@ -89,4 +88,3 @@ export function ThemePreview({ form, previewTokens }: ThemePreviewProps) {
     </div>
   )
 }
-

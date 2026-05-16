@@ -1,3 +1,4 @@
+import { Badge } from '../../../components/ui/badge'
 import { roleBadge } from '../staff.utils'
 
 type RoleBadgeProps = {
@@ -8,14 +9,8 @@ export function RoleBadge({ role }: RoleBadgeProps) {
   const badge = roleBadge(role)
 
   return (
-    <span
-      className={[
-        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold',
-        badge.className,
-      ].join(' ')}
-    >
+    <Badge variant="secondary" className={badge.className}>
       {badge.label}
-    </span>
+    </Badge>
   )
 }
-

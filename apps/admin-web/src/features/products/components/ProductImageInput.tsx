@@ -1,3 +1,6 @@
+import { Button } from '../../../components/ui/button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
 import type { ProductFormState } from '../products.types'
 
 type ProductImageInputProps = {
@@ -16,42 +19,42 @@ export function ProductImageInput({
   onFormChange,
 }: ProductImageInputProps) {
   return (
-    <div className="block">
-      <span className="text-sm font-medium text-slate-700">Item image</span>
-      <div className="mt-1 flex flex-wrap items-start gap-3">
-        <input
+    <Field data-invalid={Boolean(uploadError)}>
+      <FieldLabel htmlFor="product-image">Item image</FieldLabel>
+      <div className="flex flex-wrap items-start gap-3">
+        <Input
+          id="product-image"
           type="file"
           accept="image/*"
           disabled={uploading}
+          aria-invalid={Boolean(uploadError)}
           onChange={(event) => {
             const file = event.target.files?.[0]
             onFileUpload(file)
             event.target.value = ''
           }}
-          className="min-w-0 flex-1 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-orange-800 hover:file:bg-orange-100"
+          className="h-10 min-w-0 flex-1"
         />
         {form.imageUrl ? (
           <img
             src={form.imageUrl}
             alt="Preview"
-            className="h-20 w-20 shrink-0 rounded-lg object-cover ring-1 ring-slate-200"
+            className="size-20 shrink-0 rounded-lg object-cover ring-1 ring-border"
           />
         ) : null}
       </div>
-      {uploading ? <p className="mt-1 text-xs text-slate-500">Uploading…</p> : null}
-      {uploadError ? (
-        <p className="mt-1 text-xs text-red-600">{uploadError}</p>
-      ) : null}
+      {uploading ? <FieldDescription>Uploading...</FieldDescription> : null}
+      {uploadError ? <FieldError>{uploadError}</FieldError> : null}
       {form.imageUrl ? (
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={() => onFormChange((current) => ({ ...current, imageUrl: '' }))}
-          className="mt-2 text-xs text-slate-600 underline hover:text-slate-900"
+          className="w-fit px-0"
         >
           Remove image
-        </button>
+        </Button>
       ) : null}
-    </div>
+    </Field>
   )
 }
-

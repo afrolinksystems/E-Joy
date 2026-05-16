@@ -1,4 +1,5 @@
-import { Loader2 } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
+import { Spinner } from '../../components/ui/spinner'
 import { BasicInfoSection } from './components/BasicInfoSection'
 import { BrandingSection } from './components/BrandingSection'
 import { OperatingStatusSection } from './components/OperatingStatusSection'
@@ -16,16 +17,17 @@ export function ShopSettings() {
     <div className="relative pb-28">
       <ShopSettingsHeader shopId={state.shopId} />
       {gqlError ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          Failed to load: {gqlError}
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle>Failed to load</AlertTitle>
+          <AlertDescription>{gqlError}</AlertDescription>
+        </Alert>
       ) : null}
       <form
         id="shop-settings-form"
         onSubmit={state.onSubmit}
-        className="space-y-6"
+        className="flex flex-col gap-6"
       >
-        <fieldset disabled={state.disabled} className="space-y-6">
+        <fieldset disabled={state.disabled} className="flex flex-col gap-6">
           <BasicInfoSection
             form={formState.form}
             onFormChange={formState.setForm}
@@ -52,9 +54,9 @@ export function ShopSettings() {
         </fieldset>
       </form>
       {!state.hydrated && !state.error ? (
-        <div className="absolute inset-0 z-30 flex cursor-wait items-center justify-center rounded-xl bg-white/70 backdrop-blur-[2px]">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow-md ring-1 ring-slate-200">
-            <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
+        <div className="absolute inset-0 z-30 flex cursor-wait items-center justify-center rounded-lg bg-background/70 backdrop-blur-[2px]">
+          <div className="flex items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm text-muted-foreground shadow-md ring-1 ring-border">
+            <Spinner className="text-primary" />
             Loading shop...
           </div>
         </div>
@@ -63,7 +65,7 @@ export function ShopSettings() {
       {state.toast ? (
         <div
           role="status"
-          className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-lg bg-foreground px-4 py-2 text-sm text-background shadow-lg"
         >
           {state.toast}
         </div>
@@ -71,4 +73,3 @@ export function ShopSettings() {
     </div>
   )
 }
-

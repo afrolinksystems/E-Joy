@@ -1,3 +1,14 @@
+import { Button } from '../../../components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../components/ui/dialog'
+import { Field, FieldError, FieldGroup, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
 import type { TableRow } from '../../../graphql/tables'
 
 type EditTableDialogProps = {
@@ -23,74 +34,51 @@ export function EditTableDialog({
   onNumberChange,
   onSave,
 }: EditTableDialogProps) {
-  if (!table) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-table-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3 id="edit-table-title" className="text-lg font-semibold text-slate-900">
-          Edit table
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Update the display name and seat capacity for this table.
-        </p>
-        <div className="mt-4 space-y-3">
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Table number
-            </span>
-            <input
+    <Dialog open={Boolean(table)} onOpenChange={(nextOpen) => {
+      if (!nextOpen) onClose()
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit table</DialogTitle>
+          <DialogDescription>
+            Update the display name and seat capacity for this table.
+          </DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="table-number">Table number</FieldLabel>
+            <Input
+              id="table-number"
               type="text"
               value={number}
               onChange={(event) => onNumberChange(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               autoComplete="off"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Capacity
-            </span>
-            <input
+          </Field>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="table-capacity">Capacity</FieldLabel>
+            <Input
+              id="table-capacity"
               type="number"
               min={1}
               max={99}
               value={capacity}
               onChange={(event) => onCapacityChange(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+              aria-invalid={Boolean(error)}
             />
-          </label>
-        </div>
-        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={onClose}
-          >
+            {error ? <FieldError>{error}</FieldError> : null}
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            disabled={updating}
-            onClick={onSave}
-          >
-            {updating ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button type="button" disabled={updating} onClick={onSave}>
+            {updating ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
-

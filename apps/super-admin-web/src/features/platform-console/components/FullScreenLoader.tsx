@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { Spinner } from '../../../components/ui/spinner'
 
 type FullScreenLoaderProps = {
   label: string
@@ -6,9 +6,9 @@ type FullScreenLoaderProps = {
 
 export function FullScreenLoader({ label }: FullScreenLoaderProps) {
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 text-slate-500">
+    <main className="grid min-h-screen place-items-center bg-background text-muted-foreground">
       <div className="flex items-center gap-3">
-        <Loader2 className="animate-spin" />
+        <Spinner />
         {label}
       </div>
     </main>

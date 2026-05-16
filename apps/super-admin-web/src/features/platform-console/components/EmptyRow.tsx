@@ -1,3 +1,5 @@
+import { TableCell, TableRow } from '../../../components/ui/table'
+
 type EmptyRowProps = {
   colSpan: number
   label: string
@@ -5,10 +7,10 @@ type EmptyRowProps = {
 
 export function EmptyRow({ colSpan, label }: EmptyRowProps) {
   return (
-    <tr>
-      <td colSpan={colSpan} className="px-4 py-8 text-center text-sm text-slate-500">
+    <TableRow>
+      <TableCell colSpan={colSpan} className="py-8 text-center text-sm text-muted-foreground">
         {label}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }

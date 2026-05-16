@@ -1,9 +1,12 @@
-import { Loader2 } from 'lucide-react'
+import { Card, CardContent } from '../../../components/ui/card'
+import { Spinner } from '../../../components/ui/spinner'
 
 export function PanelLoader() {
   return (
-    <section className="grid min-h-48 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500">
-      <Loader2 className="animate-spin" />
-    </section>
+    <Card>
+      <CardContent className="grid min-h-48 place-items-center text-muted-foreground">
+        <Spinner />
+      </CardContent>
+    </Card>
   )
 }

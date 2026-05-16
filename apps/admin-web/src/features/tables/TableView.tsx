@@ -1,4 +1,6 @@
 import { AlertCircle } from 'lucide-react'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '../../components/ui/alert'
+import { Button } from '../../components/ui/button'
 import { HiddenKitchenReceipt } from '../orders/components/HiddenKitchenReceipt'
 import { AddTableButton } from './components/AddTableButton'
 import { EditTableDialog } from './components/EditTableDialog'
@@ -28,23 +30,22 @@ export function TableView() {
         />
         <FloorLegend isEditMode={state.isEditMode} />
         {state.error ? (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {state.error.message}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Tables could not load</AlertTitle>
+            <AlertDescription>{state.error.message}</AlertDescription>
+          </Alert>
         ) : null}
         {state.tableActionError && !state.editTable ? (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <Alert className="mb-4">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            {state.tableActionError}
-            <button
-              type="button"
-              className="ml-auto text-xs font-semibold underline"
-              onClick={() => state.setTableActionError(null)}
-            >
-              Dismiss
-            </button>
-          </div>
+            <AlertTitle>Table action failed</AlertTitle>
+            <AlertDescription>{state.tableActionError}</AlertDescription>
+            <AlertAction>
+              <Button type="button" variant="ghost" size="sm" onClick={() => state.setTableActionError(null)}>
+                Dismiss
+              </Button>
+            </AlertAction>
+          </Alert>
         ) : null}
         <FloorCanvas
           draggingId={state.draggingId}
@@ -101,4 +102,3 @@ export function TableView() {
     </div>
   )
 }
-

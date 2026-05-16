@@ -11,7 +11,7 @@ export function RestaurantApplicationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-950">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground">
       <section className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <ApplicationIntro />
         <ApplicationForm

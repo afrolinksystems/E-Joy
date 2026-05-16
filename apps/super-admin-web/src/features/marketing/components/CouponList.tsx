@@ -8,16 +8,18 @@ type CouponListProps = {
 }
 
 export function CouponList({ coupons, onCreate }: CouponListProps) {
+  const rows = coupons.map((coupon) => [
+    coupon.code,
+    `${formatMoney(coupon.discountValue)} - ${coupon.status}`,
+    coupon.ruleType,
+  ])
+
   return (
     <DataList
       title="Platform coupons"
       actionLabel="New coupon"
       onAction={onCreate}
-      rows={coupons.map((coupon) => [
-        coupon.code,
-        `${formatMoney(coupon.discountValue)} Â· ${coupon.status}`,
-        coupon.ruleType,
-      ])}
+      rows={rows}
     />
   )
 }

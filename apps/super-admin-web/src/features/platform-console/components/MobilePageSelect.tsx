@@ -1,3 +1,4 @@
+import { NativeSelect, NativeSelectOption } from '../../../components/ui/native-select'
 import type { NavItem, Page } from '../platform-console.types'
 
 type MobilePageSelectProps = {
@@ -8,12 +9,12 @@ type MobilePageSelectProps = {
 
 export function MobilePageSelect({ nav, onSelect, page }: MobilePageSelectProps) {
   return (
-    <select value={page} onChange={(event) => onSelect(event.target.value as Page)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+    <NativeSelect value={page} onChange={(event) => onSelect(event.target.value as Page)}>
       {nav.map(([key, , label]) => (
-        <option key={key} value={key}>
+        <NativeSelectOption key={key} value={key}>
           {label}
-        </option>
+        </NativeSelectOption>
       ))}
-    </select>
+    </NativeSelect>
   )
 }

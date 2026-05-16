@@ -1,3 +1,4 @@
+import { Card } from '../../components/ui/card'
 import { StatusFilter } from '../platform-console/components/StatusFilter'
 import { TableHeader } from '../platform-console/components/TableHeader'
 import { ApplicationsTable } from './components/ApplicationsTable'
@@ -8,7 +9,7 @@ export function ApplicationsPage() {
   const page = useApplicationsPage()
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white">
+    <Card>
       <TableHeader title="Restaurant applications" action={<StatusFilter value={page.status} onChange={page.setStatus} />} />
       <TemporaryPasswordNotice password={page.lastPassword} />
       <ApplicationsTable
@@ -17,6 +18,6 @@ export function ApplicationsPage() {
         onApprove={(application) => void page.approveApplication(application)}
         onReject={(application) => void page.rejectApplication(application)}
       />
-    </section>
+    </Card>
   )
 }

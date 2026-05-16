@@ -1,3 +1,6 @@
+import { Button } from '../../../components/ui/button'
+import { Field, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
 import type { ThemeFieldKey } from '../shop-settings.types'
 import { normalizeColorValue } from '../shop-settings.utils'
 
@@ -19,31 +22,28 @@ export function ThemeFieldControl({
   const currentValue = value.trim()
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
-      <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
+    <Field className="rounded-lg border p-3">
+      <FieldLabel htmlFor={`${fieldKey}-theme`}>{label}</FieldLabel>
       <div className="flex items-center gap-3">
-        <input
+        <Input
           type="color"
           value={normalizeColorValue(currentValue || fallback)}
           onChange={(event) => onChange(fieldKey, event.target.value)}
-          className="h-10 w-14 rounded border border-slate-300 bg-white p-1"
+          className="size-10 w-14 p-1"
+          aria-label={`${label} color`}
         />
-        <input
+        <Input
+          id={`${fieldKey}-theme`}
           value={value}
           onChange={(event) => onChange(fieldKey, event.target.value)}
           placeholder={fallback}
           maxLength={7}
-          className="w-[92px] rounded-lg border border-slate-300 px-2.5 py-2 font-mono text-sm outline-none ring-orange-500 focus:border-orange-500 focus:ring-2"
+          className="w-[92px] font-mono"
         />
-        <button
-          type="button"
-          onClick={() => onChange(fieldKey, '')}
-          className="text-xs text-slate-500 underline hover:text-slate-800"
-        >
+        <Button type="button" variant="link" onClick={() => onChange(fieldKey, '')} className="px-0">
           Use preset
-        </button>
+        </Button>
       </div>
-    </div>
+    </Field>
   )
 }
-

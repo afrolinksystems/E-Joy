@@ -1,4 +1,5 @@
 import { LayoutList, MonitorPlay } from 'lucide-react'
+import { ToggleGroup, ToggleGroupItem } from '../../../components/ui/toggle-group'
 
 type OrderModeToggleProps = {
   value: boolean
@@ -7,34 +8,22 @@ type OrderModeToggleProps = {
 
 export function OrderModeToggle({ value, onChange }: OrderModeToggleProps) {
   return (
-    <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-0.5">
-      <button
-        type="button"
-        onClick={() => onChange(false)}
-        className={[
-          'inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium',
-          !value
-            ? 'bg-white text-slate-900 shadow-sm'
-            : 'text-slate-600 hover:text-slate-900',
-        ].join(' ')}
-      >
-        <LayoutList className="h-4 w-4" />
+    <ToggleGroup
+      value={[value ? 'kitchen' : 'dispatch']}
+      onValueChange={(nextValue) => {
+        const selected = nextValue.at(-1)
+        if (selected) onChange(selected === 'kitchen')
+      }}
+      className="rounded-lg border bg-muted p-0.5"
+    >
+      <ToggleGroupItem value="dispatch">
+        <LayoutList data-icon="inline-start" />
         Dispatch
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(true)}
-        className={[
-          'inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium',
-          value
-            ? 'bg-white text-slate-900 shadow-sm'
-            : 'text-slate-600 hover:text-slate-900',
-        ].join(' ')}
-      >
-        <MonitorPlay className="h-4 w-4" />
+      </ToggleGroupItem>
+      <ToggleGroupItem value="kitchen">
+        <MonitorPlay data-icon="inline-start" />
         Kitchen view
-      </button>
-    </div>
+      </ToggleGroupItem>
+    </ToggleGroup>
   )
 }
-

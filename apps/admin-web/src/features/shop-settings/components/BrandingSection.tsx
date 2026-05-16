@@ -1,4 +1,8 @@
 import type React from 'react'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../../../components/ui/field'
+import { Input } from '../../../components/ui/input'
 import type { ShopSettingsFormState } from '../shop-settings.types'
 
 type BrandingSectionProps = {
@@ -19,48 +23,51 @@ export function BrandingSection({
   onPickLogo,
 }: BrandingSectionProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-900">Branding</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Upload your shop logo; it is stored as a public URL
-      </p>
-      <div className="mt-4">
-        <input
-          type="file"
-          accept="image/*"
-          disabled={disabled}
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            onPickLogo(file)
-            event.target.value = ''
-          }}
-          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-orange-800 hover:file:bg-orange-100 disabled:opacity-50"
-        />
-        {uploading ? <p className="mt-2 text-xs text-slate-500">Uploading...</p> : null}
-        {uploadError ? (
-          <p className="mt-2 text-xs text-red-600">{uploadError}</p>
-        ) : null}
-        {form.logoUrl ? (
-          <div className="mt-3 flex items-center gap-3">
-            <img
-              src={form.logoUrl}
-              alt="Logo preview"
-              className="h-20 w-20 rounded-xl object-cover ring-1 ring-slate-200"
-            />
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() =>
-                onFormChange((current) => ({ ...current, logoUrl: '' }))
-              }
-              className="text-xs text-slate-600 underline hover:text-slate-900 disabled:opacity-50"
-            >
-              Remove logo
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </section>
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle>Branding</CardTitle>
+        <CardDescription>Upload your shop logo; it is stored as a public URL</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Field data-invalid={Boolean(uploadError)} data-disabled={disabled}>
+          <FieldLabel htmlFor="settings-logo">Logo image</FieldLabel>
+          <Input
+            id="settings-logo"
+            type="file"
+            accept="image/*"
+            disabled={disabled}
+            aria-invalid={Boolean(uploadError)}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              onPickLogo(file)
+              event.target.value = ''
+            }}
+            className="h-10"
+          />
+          {uploading ? <FieldDescription>Uploading...</FieldDescription> : null}
+          {uploadError ? <FieldError>{uploadError}</FieldError> : null}
+          {form.logoUrl ? (
+            <div className="mt-3 flex items-center gap-3">
+              <img
+                src={form.logoUrl}
+                alt="Logo preview"
+                className="size-20 rounded-lg object-cover ring-1 ring-border"
+              />
+              <Button
+                type="button"
+                variant="link"
+                disabled={disabled}
+                onClick={() =>
+                  onFormChange((current) => ({ ...current, logoUrl: '' }))
+                }
+                className="px-0"
+              >
+                Remove logo
+              </Button>
+            </div>
+          ) : null}
+        </Field>
+      </CardContent>
+    </Card>
   )
 }
-

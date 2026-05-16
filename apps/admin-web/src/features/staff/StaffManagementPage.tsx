@@ -1,4 +1,4 @@
-import { AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { AddStaffDialog } from './components/AddStaffDialog'
 import { EditStaffRoleDialog } from './components/EditStaffRoleDialog'
 import { StaffHeader } from './components/StaffHeader'
@@ -12,10 +12,10 @@ export function StaffManagementPage() {
     <div className="flex min-h-[calc(100vh-7rem)] flex-col gap-4">
       <StaffHeader shopId={state.shopId} onAdd={state.openAdd} />
       {state.error ? (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {state.error.message}
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Staff could not load</AlertTitle>
+          <AlertDescription>{state.error.message}</AlertDescription>
+        </Alert>
       ) : null}
       <StaffTable
         deleteLoading={state.deleteLoading}
@@ -43,4 +43,3 @@ export function StaffManagementPage() {
     </div>
   )
 }
-

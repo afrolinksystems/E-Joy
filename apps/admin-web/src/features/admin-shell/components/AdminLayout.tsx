@@ -7,7 +7,7 @@ export function AdminLayout() {
   const { session, logout } = useAdminSession()
 
   return (
-    <div className="flex min-h-screen bg-slate-100 text-slate-900">
+    <div className="flex min-h-screen bg-background text-foreground">
       <AdminSidebar shopName={session.shop.name} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar session={session} onLogout={logout} />

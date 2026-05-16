@@ -1,4 +1,6 @@
 import { ClipboardList } from 'lucide-react'
+import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
 import { OrderModeToggle } from './OrderModeToggle'
 
 type OrdersHeaderProps = {
@@ -21,31 +23,20 @@ export function OrdersHeader({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Order dispatch
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Shop <span className="font-mono font-semibold">{shopId}</span>
-          {' · '}
-          Refresh every {pollMs / 1000}s
-          {' · '}
-          <span className="font-medium text-orange-600">
-            {pendingCount} pending
-          </span>
+        <h1 className="text-2xl font-bold tracking-tight">Order dispatch</h1>
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>Shop <span className="font-mono font-semibold text-foreground">{shopId}</span></span>
+          <span>Refresh every {pollMs / 1000}s</span>
+          <Badge variant="secondary">{pendingCount} pending</Badge>
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <OrderModeToggle value={kitchenView} onChange={onViewChange} />
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          <ClipboardList className="h-4 w-4" />
+        <Button type="button" variant="outline" onClick={onRefresh}>
+          <ClipboardList data-icon="inline-start" />
           Refresh now
-        </button>
+        </Button>
       </div>
     </div>
   )
 }
-

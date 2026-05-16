@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
 import type { ReactNode } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { errorTrackingDsn } from './tracking'
 
 export function AppErrorBoundary({ children }: { children: ReactNode }) {
@@ -13,13 +14,14 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
 
 function RootErrorFallback() {
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 px-4 text-slate-900">
-      <section className="max-w-md rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-        <h1 className="text-lg font-bold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Please refresh the page. The error has been recorded for review.
-        </p>
-      </section>
+    <main className="grid min-h-screen place-items-center bg-background px-4 text-foreground">
+      <Card className="max-w-md text-center">
+        <CardHeader>
+          <CardTitle>Something went wrong</CardTitle>
+          <CardDescription>Please refresh the page. The error has been recorded for review.</CardDescription>
+        </CardHeader>
+        <CardContent />
+      </Card>
     </main>
   )
 }

@@ -8,7 +8,7 @@ import {
   Subscription,
 } from '@nestjs/graphql';
 import { GraphQLBoolean, GraphQLString } from 'graphql';
-import { ForbiddenException, Inject, Logger, UseGuards } from '@nestjs/common';
+import { Inject, Logger, UseGuards } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { CurrentUserId } from '../auth/current-user-id.decorator';
 import { CurrentUserRole } from '../auth/current-user-role.decorator';
@@ -47,6 +47,13 @@ import {
 } from './order.types';
 import { OrderService } from './order.service';
 import { TableModel } from '../table/table.types';
+import {
+  assertManagerDeliveryWrite,
+  assertMerchantDispatchAccess,
+  assertSensitiveActionCode,
+  assertShopScope,
+  resolveMerchantShopId,
+} from './policies/order-access.policy';
 
 @Resolver()
 export class OrderResolver {
@@ -56,62 +63,6 @@ export class OrderResolver {
     private readonly orderService: OrderService,
     @Inject('PUB_SUB') private readonly pubSub: PubSub,
   ) {}
-
-  private assertMerchantDispatchAccess(
-    role: string | undefined,
-    scope: string[] | undefined,
-    mode: 'read' | 'write',
-  ): void {
-    const r = role?.toLowerCase();
-    const allowed =
-      r === 'staff' ||
-      r === 'manager' ||
-      r === 'admin' ||
-      r === 'platform_admin';
-    if (!allowed) {
-      throw new ForbiddenException('Merchant access required');
-    }
-    if (r === 'admin' || r === 'platform_admin') {
-      return;
-    }
-    const need = mode === 'read' ? 'staff:read' : 'staff:write';
-    if (!(scope ?? []).includes(need)) {
-      throw new ForbiddenException(`Missing ${need} scope`);
-    }
-  }
-
-  private resolveMerchantShopId(
-    shopId: string | undefined,
-    currentShopId: string | undefined,
-  ): string {
-    const effective = shopId ?? currentShopId;
-    if (!effective) {
-      throw new ForbiddenException('Shop context is required');
-    }
-    if (currentShopId && shopId && currentShopId !== shopId) {
-      throw new ForbiddenException('Shop scope mismatch');
-    }
-    return effective;
-  }
-
-  private assertManagerDeliveryWrite(
-    role: string | undefined,
-    scope: string[] | undefined,
-  ): void {
-    const r = role?.toLowerCase();
-    const isAllowedRole =
-      r === 'manager' || r === 'admin' || r === 'platform_admin';
-    if (!isAllowedRole) {
-      throw new ForbiddenException('Manager role required');
-    }
-    if (
-      r !== 'admin' &&
-      r !== 'platform_admin' &&
-      !(scope ?? []).includes('delivery:write')
-    ) {
-      throw new ForbiddenException('Missing delivery:write scope');
-    }
-  }
 
   @UseGuards(JwtAuthGuard)
   @Subscription(() => TableModel, {
@@ -166,19 +117,9 @@ export class OrderResolver {
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
   ): Promise<MerchantDispatchOrderModel[]> {
-    const user = context.req?.user;
-    console.log(
-      'Incoming Merchant ID:',
-      user?.merchantId ?? user?.shopId ?? '(none)',
-      '| shopId arg:',
-      shopId ?? '(none)',
-      '| JWT shopId:',
-      user?.shopId ?? '(none)',
-    );
-    this.assertMerchantDispatchAccess(role, scope, 'read');
-    const effective = this.resolveMerchantShopId(shopId, currentShopId);
-    console.log('Final Query Merchant ID:', user?.merchantId);
-    console.log('Final Prisma shopId filter (Order.shopId):', effective);
+    void context;
+    assertMerchantDispatchAccess(role, scope, 'read');
+    const effective = resolveMerchantShopId(shopId, currentShopId);
     return this.orderService.merchantDispatchOrders(effective);
   }
 
@@ -195,8 +136,8 @@ export class OrderResolver {
     @CurrentUserShopId() currentShopId?: string,
     @CurrentUserId() userId?: string,
   ): Promise<MerchantDispatchOrderModel> {
-    this.assertMerchantDispatchAccess(role, scope, 'write');
-    const effective = this.resolveMerchantShopId(shopId, currentShopId);
+    assertMerchantDispatchAccess(role, scope, 'write');
+    const effective = resolveMerchantShopId(shopId, currentShopId);
     return this.orderService.updateMerchantOrderStatus(
       id,
       effective,
@@ -280,10 +221,8 @@ export class OrderResolver {
     @CurrentUserScope() scope?: string[],
     @CurrentUserShopId() currentShopId?: string,
   ): Promise<OrderModel[]> {
-    this.assertManagerDeliveryWrite(role, scope);
-    if (currentShopId && currentShopId !== shopId) {
-      throw new ForbiddenException('Shop scope mismatch');
-    }
+    assertManagerDeliveryWrite(role, scope);
+    assertShopScope(shopId, currentShopId);
     return this.orderService.deliveryOrders(shopId, filters);
   }
 
@@ -296,7 +235,7 @@ export class OrderResolver {
     @CurrentUserShopId() currentShopId?: string,
     @CurrentUserId() userId?: string,
   ): Promise<OrderPayload> {
-    this.assertManagerDeliveryWrite(role, scope);
+    assertManagerDeliveryWrite(role, scope);
     return this.orderService.acceptDeliveryOrder(input, currentShopId, userId);
   }
 
@@ -309,7 +248,7 @@ export class OrderResolver {
     @CurrentUserShopId() currentShopId?: string,
     @CurrentUserId() userId?: string,
   ): Promise<OrderPayload> {
-    this.assertManagerDeliveryWrite(role, scope);
+    assertManagerDeliveryWrite(role, scope);
     return this.orderService.markDeliveryOrderReady(
       input,
       currentShopId,
@@ -397,11 +336,9 @@ export class OrderResolver {
     @CurrentUserShopId() currentShopId?: string,
     @CurrentUserId() userId?: string,
   ): Promise<ShopDeliveryConfigModel> {
-    this.assertManagerDeliveryWrite(role, scope);
-    if (currentShopId && currentShopId !== shopId) {
-      throw new ForbiddenException('Shop scope mismatch');
-    }
-    this.assertSensitiveAction(verification);
+    assertManagerDeliveryWrite(role, scope);
+    assertShopScope(shopId, currentShopId);
+    assertSensitiveActionCode(verification.code);
     this.auditSensitiveAction('UPDATE_DELIVERY_CONFIG', {
       actorUserId: userId,
       shopId,
@@ -416,20 +353,6 @@ export class OrderResolver {
     @Args('address') address: AddressInput,
   ): Promise<DeliveryCheckResultModel> {
     return this.orderService.checkDelivery(shopId, address);
-  }
-
-  private assertSensitiveAction(
-    verification: SensitiveActionVerificationInput,
-  ): void {
-    const expected = process.env.ADMIN_SENSITIVE_OP_CODE?.trim();
-    if (!expected) {
-      throw new ForbiddenException(
-        'Sensitive operation code is not configured',
-      );
-    }
-    if (verification.code !== expected) {
-      throw new ForbiddenException('Second verification failed');
-    }
   }
 
   private auditSensitiveAction(

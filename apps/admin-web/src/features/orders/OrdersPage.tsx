@@ -1,4 +1,4 @@
-import { AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { DispatchOrderDetail } from './components/DispatchOrderDetail'
 import { DispatchOrderList } from './components/DispatchOrderList'
 import { HiddenKitchenReceipt } from './components/HiddenKitchenReceipt'
@@ -22,10 +22,10 @@ export function OrdersPage() {
         onViewChange={state.setKitchenView}
       />
       {state.error ? (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {state.error.message}
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Orders could not load</AlertTitle>
+          <AlertDescription>{state.error.message}</AlertDescription>
+        </Alert>
       ) : null}
       {state.kitchenView ? (
         <KitchenView
@@ -57,4 +57,3 @@ export function OrdersPage() {
     </div>
   )
 }
-

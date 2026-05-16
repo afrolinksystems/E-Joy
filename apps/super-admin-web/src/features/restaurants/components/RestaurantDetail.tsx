@@ -1,3 +1,5 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '../../../components/ui/empty'
 import { MiniStat } from '../../platform-console/components/MiniStat'
 import { PanelLoader } from '../../platform-console/components/PanelLoader'
 import { formatMoney } from '../../platform-console/platform-console.utils'
@@ -14,34 +16,47 @@ export function RestaurantDetail({ shopId }: RestaurantDetailProps) {
   const detail = useRestaurantDetail(shopId)
 
   if (detail.loading && !detail.data) return <PanelLoader />
-  if (!detail.data) return <section className="rounded-xl border border-slate-200 bg-white p-5">Restaurant not found.</section>
+  if (!detail.data) {
+    return (
+      <Card>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Restaurant not found.</EmptyTitle>
+            <EmptyDescription>Select another restaurant to inspect its console details.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </Card>
+    )
+  }
 
   return (
-    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-      <div>
-        <h2 className="text-base font-bold">{detail.data.shop.name}</h2>
-        <p className="font-mono text-xs text-slate-500">{shopId}</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Orders" value={detail.data.shop.orderCount} />
-        <MiniStat label="Revenue" value={formatMoney(detail.data.shop.revenueCent)} />
-      </div>
-      <ManagersList managers={detail.data.managers} />
-      <div>
-        <h3 className="mb-2 text-sm font-bold">Telebirr config stub</h3>
-        <PaymentConfigForm
-          key={detail.data.paymentConfig?.id ?? shopId}
-          initialValue={{
-            provider: detail.data.paymentConfig?.provider ?? 'TELEBIRR',
-            merchantId: detail.data.paymentConfig?.merchantId ?? '',
-            appId: detail.data.paymentConfig?.appId ?? '',
-            enabled: detail.data.paymentConfig?.enabled ?? false,
-            testMode: detail.data.paymentConfig?.testMode ?? true,
-          }}
-          onSave={detail.save}
-        />
-      </div>
-      <CustomerQrSample shopId={shopId} />
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>{detail.data.shop.name}</CardTitle>
+        <CardDescription className="font-mono">{shopId}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MiniStat label="Orders" value={detail.data.shop.orderCount} />
+          <MiniStat label="Revenue" value={formatMoney(detail.data.shop.revenueCent)} />
+        </div>
+        <ManagersList managers={detail.data.managers} />
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-bold">Telebirr config stub</h3>
+          <PaymentConfigForm
+            key={detail.data.paymentConfig?.id ?? shopId}
+            initialValue={{
+              provider: detail.data.paymentConfig?.provider ?? 'TELEBIRR',
+              merchantId: detail.data.paymentConfig?.merchantId ?? '',
+              appId: detail.data.paymentConfig?.appId ?? '',
+              enabled: detail.data.paymentConfig?.enabled ?? false,
+              testMode: detail.data.paymentConfig?.testMode ?? true,
+            }}
+            onSave={detail.save}
+          />
+        </section>
+        <CustomerQrSample shopId={shopId} />
+      </CardContent>
+    </Card>
   )
 }
