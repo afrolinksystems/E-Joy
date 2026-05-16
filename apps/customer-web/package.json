@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "type-check": "tsc --noEmit -p tsconfig.app.json",
-    "preview": "vite preview"
+    "preview": "vite preview --port 9601"
   },
   "dependencies": {
     "@apollo/client": "^4.1.6",
