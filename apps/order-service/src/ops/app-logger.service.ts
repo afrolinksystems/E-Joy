@@ -116,7 +116,7 @@ export class AppLoggerService implements OnModuleDestroy {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${process.env.BETTER_STACK_SOURCE_TOKEN}`,
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-ndjson',
         },
         body: batch.map((entry) => JSON.stringify(entry)).join('\n'),
       });

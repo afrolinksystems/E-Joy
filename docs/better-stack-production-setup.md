@@ -29,11 +29,20 @@ BETTER_STACK_SOURCE_TOKEN=<order-service-production-logs-source-token>
 BETTER_STACK_SENTRY_DSN=<order-service-sentry-compatible-dsn>
 ```
 
+The backend-only env template lives at `apps/order-service/.env.example`.
+Use that file as the source of truth for order-service variables; do not put
+frontend `VITE_*` variables into Render for the backend service.
+
 After saving env vars, redeploy the Render service.
 
 ## Vercel Environment Variables
 
 Set these on each Vercel project for Production, Preview, and Development as appropriate.
+Each frontend owns its own env template:
+
+- `apps/admin-web/.env.example`
+- `apps/super-admin-web/.env.example`
+- `apps/customer-web/.env.example`
 
 `admin-web`:
 
@@ -101,4 +110,3 @@ After redeploy:
 3. Attempt one invalid admin login and confirm an `auth.login.failed` log appears without password/token/cookie values.
 4. Trigger one known frontend error in a staging deployment and confirm it reaches the matching frontend error source.
 5. Confirm all uptime monitors turn green.
-

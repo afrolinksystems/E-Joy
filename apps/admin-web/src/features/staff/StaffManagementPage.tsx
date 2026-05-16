@@ -4,13 +4,20 @@ import { EditStaffRoleDialog } from './components/EditStaffRoleDialog'
 import { StaffHeader } from './components/StaffHeader'
 import { StaffTable } from './components/StaffTable'
 import { useStaffManagement } from './hooks/useStaffManagement'
+import { useStaffTableControls } from './hooks/useStaffTableControls'
 
 export function StaffManagementPage() {
   const state = useStaffManagement()
+  const table = useStaffTableControls(state.rows)
 
   return (
-    <div className="flex min-h-[calc(100vh-7rem)] flex-col gap-4">
-      <StaffHeader shopId={state.shopId} onAdd={state.openAdd} />
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <StaffHeader
+        filteredCount={table.view.filteredCount}
+        shopId={state.shopId}
+        totalCount={table.view.totalCount}
+        onAdd={state.openAdd}
+      />
       {state.error ? (
         <Alert variant="destructive">
           <AlertTitle>Staff could not load</AlertTitle>
@@ -18,9 +25,12 @@ export function StaffManagementPage() {
         </Alert>
       ) : null}
       <StaffTable
+        actions={table.actions}
+        controls={table.controls}
         deleteLoading={state.deleteLoading}
         loading={state.loading}
-        rows={state.rows}
+        rows={table.view.rows}
+        view={table.view}
         onDelete={state.onDelete}
         onEdit={state.openEdit}
       />

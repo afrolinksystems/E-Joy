@@ -17,7 +17,7 @@ type AdminSidebarProps = {
 
 export function AdminSidebar({ shopName }: AdminSidebarProps) {
   return (
-    <aside className="admin-no-print flex w-56 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-100">
+    <aside className="admin-no-print sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-100">
       <div className="border-b border-slate-800 px-4 py-5">
         <div className="text-lg font-bold tracking-tight text-white">E-Joy</div>
         <div className="text-xs text-slate-400">{shopName}</div>

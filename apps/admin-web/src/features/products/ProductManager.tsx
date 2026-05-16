@@ -3,16 +3,23 @@ import { ProductFormDialog } from './components/ProductFormDialog'
 import { ProductHeader } from './components/ProductHeader'
 import { ProductTable } from './components/ProductTable'
 import { useProductManager } from './hooks/useProductManager'
+import { useProductTableControls } from './hooks/useProductTableControls'
 
 export function ProductManager() {
   const state = useProductManager()
   const formState = state.productForm
   const title = formState.editing ? 'Edit item' : 'Add item'
   const gqlError = state.error?.message
+  const table = useProductTableControls(state.rows)
 
   return (
-    <div className="flex flex-col gap-4">
-      <ProductHeader shopId={state.shopId} onCreate={state.openCreate} />
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <ProductHeader
+        filteredCount={table.view.filteredCount}
+        shopId={state.shopId}
+        totalCount={table.view.totalCount}
+        onCreate={state.openCreate}
+      />
       {state.toast ? (
         <Alert variant="destructive">
           <AlertTitle>Product action failed</AlertTitle>
@@ -29,9 +36,12 @@ export function ProductManager() {
         </Alert>
       ) : null}
       <ProductTable
+        actions={table.actions}
         archiving={state.archiving}
+        controls={table.controls}
         loading={state.loading}
-        rows={state.rows}
+        rows={table.view.rows}
+        view={table.view}
         onArchive={state.onArchiveClick}
         onEdit={state.openEdit}
       />
