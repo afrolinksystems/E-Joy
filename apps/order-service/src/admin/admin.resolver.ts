@@ -3,8 +3,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { JwtService } from '@nestjs/jwt';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { Response } from 'express';
+import { AuthSessionService } from '../auth/auth-session.service';
+import { AuthTokenService } from '../auth/auth-token.service';
+import { RateLimitService } from '../auth/rate-limit.service';
+import { setRefreshCookie } from '../auth/cookie.util';
 import { CurrentUserRole } from '../auth/current-user-role.decorator';
 import { CurrentUserShopId } from '../auth/current-user-shop-id.decorator';
 import { CurrentUserScope } from '../auth/current-user-scope.decorator';
@@ -60,12 +64,16 @@ import {
   UpdateShopInput,
 } from './admin.inputs';
 import { ShopModel } from '../shop/shop.types';
+import { AppLoggerService } from '../ops/app-logger.service';
 
 @Resolver()
 export class AdminResolver {
   constructor(
     private readonly adminService: AdminService,
-    private readonly jwtService: JwtService,
+    private readonly authSessions: AuthSessionService,
+    private readonly authTokens: AuthTokenService,
+    private readonly rateLimit: RateLimitService,
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   private assertManagerAccess(
@@ -92,25 +100,73 @@ export class AdminResolver {
   async platformLogin(
     @Args('identifier') identifier: string,
     @Args('password') password: string,
+    @Context()
+    ctx: {
+      req?: {
+        headers?: Record<string, string | string[] | undefined>;
+        ip?: string;
+      };
+      res?: Response;
+    },
   ): Promise<PlatformAuthPayloadModel> {
-    if (!identifier.trim() || !password.trim()) {
+    const normalizedIdentifier = identifier.trim().toLowerCase();
+    this.rateLimit.consume({
+      key: `${this.rateLimit.getClientIp(ctx.req)}:${normalizedIdentifier}`,
+      label: 'platform_login',
+      limit: 5,
+      windowMs: 60_000,
+    });
+    if (!normalizedIdentifier || !password.trim()) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        identifier: normalizedIdentifier,
+        reason: 'missing_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid identifier or password');
     }
     const admin = await this.adminService.authenticatePlatformAdmin(
-      identifier,
+      normalizedIdentifier,
       password,
     );
     if (!admin) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        identifier: normalizedIdentifier,
+        reason: 'invalid_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid identifier or password');
     }
     const scope = this.adminService.platformScopes(String(admin.role));
-    const accessToken = this.jwtService.sign({
-      sub: String(admin.id),
-      role: 'platform_admin',
-      platformRole: String(admin.role),
-      scope,
+    const session = await this.authSessions.createSession({
+      subjectType: 'PLATFORM_ADMIN',
+      subjectId: String(admin.id),
+      userAgent: String(ctx.req?.headers?.['user-agent'] ?? ''),
+      ip: this.rateLimit.getClientIp(ctx.req),
     });
-    return { accessToken, role: 'platform_admin', scope };
+    const signed = this.authTokens.signAccessToken(
+      {
+        id: String(admin.id),
+        subjectType: 'PLATFORM_ADMIN',
+        role: 'platform_admin',
+        platformRole: String(admin.role),
+        scope,
+      },
+      session.sessionId,
+    );
+    setRefreshCookie(ctx.res, session.refreshToken);
+    this.appLogger.info('auth.login.success', {
+      subjectType: 'PLATFORM_ADMIN',
+      subjectId: String(admin.id),
+      role: String(admin.role),
+    });
+    return {
+      accessToken: signed.accessToken,
+      expiresAt: signed.expiresAt,
+      role: 'platform_admin',
+      scope,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
@@ -481,7 +537,20 @@ export class AdminResolver {
   @Mutation(() => ShopApplicationModel)
   submitShopApplication(
     @Args('input') input: CreateShopApplicationInput,
+    @Context()
+    ctx: {
+      req?: {
+        headers?: Record<string, string | string[] | undefined>;
+        ip?: string;
+      };
+    },
   ): Promise<ShopApplicationModel> {
+    this.rateLimit.consume({
+      key: `${this.rateLimit.getClientIp(ctx.req)}:${input.contactPhone}`,
+      label: 'submit_shop_application',
+      limit: 5,
+      windowMs: 60 * 60_000,
+    });
     return this.adminService.submitShopApplication(input);
   }
 

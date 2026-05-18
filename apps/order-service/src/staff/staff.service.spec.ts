@@ -73,8 +73,15 @@ describe('StaffService', () => {
       publishServiceTicketUpdated: jest.fn().mockResolvedValue(undefined),
       publishPrintJobUpdated: jest.fn().mockResolvedValue(undefined),
     };
+    const authSessions = {
+      revokeSubject: jest.fn().mockResolvedValue(undefined),
+    };
     return {
-      svc: new StaffService(prisma as never, realtime as never),
+      svc: new StaffService(
+        prisma as never,
+        realtime as never,
+        authSessions as never,
+      ),
       state,
       prisma,
     };
@@ -216,7 +223,13 @@ describe('StaffService', () => {
         }),
       },
     };
-    const svc = new StaffService(prisma as never, {} as never);
+    const svc = new StaffService(
+      prisma as never,
+      {} as never,
+      {
+        revokeSubject: jest.fn(),
+      } as never,
+    );
 
     await expect(
       svc.authenticateStaff('0911000000', 'wrong'),
@@ -238,7 +251,13 @@ describe('StaffService', () => {
         findFirst: jest.fn().mockResolvedValue(null),
       },
     };
-    const svc = new StaffService(prisma as never, {} as never);
+    const svc = new StaffService(
+      prisma as never,
+      {} as never,
+      {
+        revokeSubject: jest.fn(),
+      } as never,
+    );
 
     await expect(
       svc.authenticateStaff('0911000000', 'secret123'),

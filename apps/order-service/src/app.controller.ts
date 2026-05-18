@@ -2,6 +2,7 @@ import { Controller, Get, Logger, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppService } from './app.service';
 import { OrderService } from './order/order.service';
+import { OpsService } from './ops/ops.service';
 
 @Controller()
 export class AppController {
@@ -10,11 +11,32 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly orderService: OrderService,
+    private readonly opsService: OpsService,
   ) {}
 
   @Get()
   getHello(): string {
     return this.appService.getHello();
+  }
+
+  @Get('health')
+  health() {
+    return {
+      ok: true,
+      service: process.env.SERVICE_NAME?.trim() || 'order-service',
+      environment: process.env.NODE_ENV || 'development',
+      uptimeSeconds: Math.floor(process.uptime()),
+    };
+  }
+
+  @Get('health/dependencies')
+  async dependencyHealth() {
+    const dependencies = await this.opsService.dependencyHealth();
+    return {
+      ok: dependencies.db === 'ok',
+      service: process.env.SERVICE_NAME?.trim() || 'order-service',
+      dependencies,
+    };
   }
 
   /**

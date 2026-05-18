@@ -105,6 +105,9 @@ export class PlatformAuthPayloadModel {
   accessToken!: string;
 
   @Field()
+  expiresAt!: string;
+
+  @Field()
   role!: string;
 
   @Field(() => [String])

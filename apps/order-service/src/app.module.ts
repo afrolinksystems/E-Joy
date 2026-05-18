@@ -5,11 +5,19 @@ import { PubSub } from 'graphql-subscriptions';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { join } from 'path';
+import { getAuthConfig } from './auth/auth-config';
+import { AuthSessionService } from './auth/auth-session.service';
+import { AuthTokenService } from './auth/auth-token.service';
+import { RateLimitService } from './auth/rate-limit.service';
+import { captureException } from './ops/error-tracking';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrderResolver } from './order/order.resolver';
 import { OrderService } from './order/order.service';
 import { InventoryService } from './order/inventory.service';
+import { OrderAddressService } from './order/application/order-address.service';
+import { DeliveryConfigService } from './order/application/delivery-config.service';
+import { ShopMenuQueryService } from './order/application/shop-menu-query.service';
 import { PrismaService } from './prisma/prisma.service';
 import { PRISMA_CLIENT } from './prisma/prisma.token';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -27,6 +35,7 @@ import { PaymentMetricsService } from './payment/payment-metrics.service';
 import { OpsResolver } from './ops/ops.resolver';
 import { OpsService } from './ops/ops.service';
 import { ObservabilityService } from './ops/observability.service';
+import { AppLoggerService } from './ops/app-logger.service';
 import { RealtimeService } from './realtime/realtime.service';
 import { ProductResolver } from './product/product.resolver';
 import { ProductService } from './product/product.service';
@@ -37,13 +46,19 @@ import { UploadController } from './upload/upload.controller';
 import { UploadService } from './upload/upload.service';
 import { PaymentController } from './payment/payment.controller';
 import { TelebirrService } from './payment/telebirr.service';
+import type { GraphQLFormattedError } from 'graphql';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'dev_jwt_secret',
-      signOptions: { expiresIn: '1h' },
+      secret: getAuthConfig().accessSecret,
+      signOptions: {
+        expiresIn: getAuthConfig().accessTokenTtlSeconds,
+        issuer: getAuthConfig().issuer,
+        audience: getAuthConfig().audience,
+        algorithm: 'HS256',
+      },
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -73,11 +88,24 @@ import { TelebirrService } from './payment/telebirr.service';
       },
       context: ({
         req,
+        res,
         extra,
       }: {
         req?: unknown;
+        res?: unknown;
         extra?: { req?: unknown };
-      }) => ({ req: extra?.req ?? req }),
+      }) => ({ req: extra?.req ?? req, res }),
+      formatError: (formattedError: GraphQLFormattedError) => {
+        if (formattedError.extensions?.code === 'INTERNAL_SERVER_ERROR') {
+          captureException(new Error(formattedError.message), {
+            graphql: {
+              path: formattedError.path?.join('.'),
+              code: formattedError.extensions.code,
+            },
+          });
+        }
+        return formattedError;
+      },
     }),
   ],
   controllers: [AppController, UploadController, PaymentController],
@@ -89,6 +117,9 @@ import { TelebirrService } from './payment/telebirr.service';
     JwtAuthGuard,
     RolesGuard,
     JwtStrategy,
+    AuthSessionService,
+    AuthTokenService,
+    RateLimitService,
     TelebirrPaymentProviderService,
     TelebirrService,
     { provide: PAYMENT_PROVIDER, useExisting: TelebirrPaymentProviderService },
@@ -101,6 +132,9 @@ import { TelebirrService } from './payment/telebirr.service';
     OrderResolver,
     OrderService,
     InventoryService,
+    OrderAddressService,
+    DeliveryConfigService,
+    ShopMenuQueryService,
     ProductResolver,
     ProductService,
     ShopResolver,
@@ -113,6 +147,7 @@ import { TelebirrService } from './payment/telebirr.service';
     OpsResolver,
     OpsService,
     ObservabilityService,
+    AppLoggerService,
     RealtimeService,
     UploadService,
   ],

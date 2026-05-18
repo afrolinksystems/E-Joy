@@ -1,24 +1,38 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { getAuthConfig } from './auth-config';
+import { AuthSessionService } from './auth-session.service';
+import {
+  AuthTokenService,
+  type AccessTokenPayload,
+} from './auth-token.service';
 
 type JwtPayload = {
   sub?: string;
-  userId?: string;
+  sid?: string;
+  typ?: string;
   role?: string;
   shopId?: string;
   scope?: string[];
+  subjectType?: 'STAFF' | 'PLATFORM_ADMIN';
+  platformRole?: string;
 };
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
-    // 与 AppModule JwtModule.register 使用同一默认 secret，避免验签与签发不一致
-    const secret = process.env.JWT_SECRET ?? 'dev_jwt_secret';
+  constructor(
+    private readonly authSessions: AuthSessionService,
+    private readonly authTokens: AuthTokenService,
+  ) {
+    const cfg = getAuthConfig();
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      secretOrKey: cfg.accessSecret,
+      issuer: cfg.issuer,
+      audience: cfg.audience,
+      algorithms: ['HS256'],
     });
   }
 
@@ -27,16 +41,33 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     role: string;
     shopId?: string;
     scope: string[];
+    sessionId: string;
+    subjectType: 'STAFF' | 'PLATFORM_ADMIN';
+    platformRole?: string;
   }> {
-    const userId = payload.sub ?? payload.userId;
-    if (!userId) {
+    this.authTokens.assertAccessPayload(payload as Record<string, unknown>);
+    const accessPayload = payload as AccessTokenPayload;
+    const userId = accessPayload.sub;
+    if (!userId || !accessPayload.sid) {
       throw new UnauthorizedException('JWT payload missing user id');
+    }
+    const session = await this.authSessions.requireLiveSession(
+      accessPayload.sid,
+    );
+    if (
+      session.subjectId !== userId ||
+      session.subjectType !== accessPayload.subjectType
+    ) {
+      throw new UnauthorizedException('Session does not match access token');
     }
     return {
       id: userId,
-      role: payload.role ?? 'customer',
-      shopId: payload.shopId,
-      scope: payload.scope ?? [],
+      role: accessPayload.role,
+      shopId: accessPayload.shopId,
+      scope: accessPayload.scope,
+      sessionId: accessPayload.sid,
+      subjectType: accessPayload.subjectType,
+      platformRole: accessPayload.platformRole,
     };
   }
 }

@@ -95,6 +95,11 @@ enum PlatformAdminRole {
   OPERATOR
 }
 
+enum AuthSubjectType {
+  STAFF
+  PLATFORM_ADMIN
+}
+
 enum ProductStatus {
   ACTIVE
   ARCHIVED
@@ -171,6 +176,8 @@ model Shop {
   description  String?
   contactPhone String?
   logoUrl      String?
+  customerThemePreset        String?
+  customerThemeOverridesJson String?
   active       Boolean       @default(true)
   updatedBy    String?
   createdAt    DateTime      @default(now())
@@ -527,6 +534,27 @@ model PlatformAdmin {
   status       PlatformAdminStatus @default(ACTIVE)
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
+}
+
+model AuthSession {
+  id                String          @id @default(cuid())
+  subjectType       AuthSubjectType
+  subjectId         String
+  tokenFamily       String
+  refreshTokenHash  String
+  userAgent         String?
+  ipHash            String?
+  expiresAt         DateTime
+  rotatedAt         DateTime?
+  revokedAt         DateTime?
+  revokedReason     String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([subjectType, subjectId])
+  @@index([tokenFamily])
+  @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model ShopPaymentConfig {

@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { StaffRole, StaffStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { AuthSessionService } from '../auth/auth-session.service';
+import { getAuthConfig } from '../auth/auth-config';
 import { PRISMA_CLIENT } from '../prisma/prisma.token';
 import { RealtimeService } from '../realtime/realtime.service';
 import {
@@ -100,7 +102,21 @@ export class StaffService {
       };
     },
     private readonly realtimeService: RealtimeService,
+    private readonly authSessions: AuthSessionService,
   ) {}
+
+  private assertStrongPassword(password: string): void {
+    const strong =
+      password.length >= 10 &&
+      /[a-z]/.test(password) &&
+      /[A-Z]/.test(password) &&
+      /\d/.test(password);
+    if (!strong) {
+      throw new ConflictException(
+        'Password must be at least 10 characters and include upper, lower, and numeric characters',
+      );
+    }
+  }
 
   async authenticateStaff(
     phone: string,
@@ -114,6 +130,39 @@ export class StaffService {
       typeof staff.passwordHash === 'string' ? staff.passwordHash : '';
     const ok = await bcrypt.compare(password, passwordHash);
     return ok ? staff : null;
+  }
+
+  async staffActor(staffId: string): Promise<Record<string, unknown> | null> {
+    return this.prisma.staff.findFirst({
+      where: { id: staffId, status: StaffStatus.ACTIVE },
+    });
+  }
+
+  async changePassword(
+    staffId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
+    this.assertStrongPassword(newPassword);
+    const staff = await this.prisma.staff.findFirst({
+      where: { id: staffId, status: StaffStatus.ACTIVE },
+    });
+    const hash =
+      typeof staff?.passwordHash === 'string' ? staff.passwordHash : '';
+    if (!staff || !(await bcrypt.compare(currentPassword, hash))) {
+      return false;
+    }
+    await this.prisma.staff.updateMany({
+      where: { id: staffId },
+      data: {
+        passwordHash: await bcrypt.hash(
+          newPassword,
+          getAuthConfig().bcryptCost,
+        ),
+      },
+    });
+    await this.authSessions.revokeSubject('STAFF', staffId, 'password_changed');
+    return true;
   }
 
   async merchantMe(staffId: string): Promise<{
@@ -582,7 +631,11 @@ export class StaffService {
     shopId: string,
     input: CreateStaffAccountInput,
   ): Promise<StaffUserModel> {
-    const passwordHash = await bcrypt.hash(input.password, 10);
+    this.assertStrongPassword(input.password);
+    const passwordHash = await bcrypt.hash(
+      input.password,
+      getAuthConfig().bcryptCost,
+    );
     try {
       const created = await this.prisma.staff.create({
         data: {
@@ -627,6 +680,11 @@ export class StaffService {
     if (!row) {
       throw new NotFoundException('Staff user not found in this shop');
     }
+    await this.authSessions.revokeSubject(
+      'STAFF',
+      input.userId,
+      'staff_role_changed',
+    );
     return this.toStaffUserModel(row);
   }
 
@@ -638,6 +696,9 @@ export class StaffService {
       where: { id: staffId, shopId },
       data: { status: StaffStatus.INACTIVE },
     });
+    if (r.count > 0) {
+      await this.authSessions.revokeSubject('STAFF', staffId, 'staff_disabled');
+    }
     return r.count > 0;
   }
 

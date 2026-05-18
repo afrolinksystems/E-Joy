@@ -39,8 +39,7 @@ apps/order-service/uploads/
 # 5. 数据库与 Prisma (Database)
 *.db
 *.db-journal
-apps/order-service/prisma/migrations/
-# 注意：通常保留 migrations 提交，但如果你想重新生成可以忽略
+# Prisma migrations are deployment artifacts and must stay versioned.
 
 # 6. 系统与编辑器缓存 (OS & IDE)
 .DS_Store

@@ -1,0 +1,35 @@
+[data-theme="mono"] {
+  --background: #ffffff;
+  --foreground: #252525;
+  --card: #ffffff;
+  --card-foreground: #252525;
+  --popover: #ffffff;
+  --popover-foreground: #252525;
+  --primary: #666666;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1f1;
+  --secondary-foreground: #252525;
+  --muted: #f1f1f1;
+  --muted-foreground: #6f6f6f;
+  --accent: #f1f1f1;
+  --accent-foreground: #252525;
+  --destructive: #ca4535;
+  --border: #e2e2e2;
+  --input: #e2e2e2;
+  --ring: #8f8f8f;
+  --chart-1: #666666;
+  --chart-2: #777777;
+  --chart-3: #888888;
+  --chart-4: #999999;
+  --chart-5: #aaaaaa;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #252525;
+  --sidebar-primary: #252525;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f1f1;
+  --sidebar-accent-foreground: #252525;
+  --sidebar-border: #e2e2e2;
+  --sidebar-ring: #8f8f8f;
+  --radius: 0rem;
+  --font-sans: "Courier New", monospace;
+}

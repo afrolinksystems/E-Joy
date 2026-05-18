@@ -66,10 +66,13 @@ export class AuthPayloadModel {
   accessToken!: string;
 
   @Field()
-  role!: string;
+  expiresAt!: string;
 
   @Field()
-  shopId!: string;
+  role!: string;
+
+  @Field({ nullable: true })
+  shopId?: string;
 
   @Field(() => [String])
   scope!: string[];

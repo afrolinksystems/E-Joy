@@ -9,6 +9,8 @@ import {
 import { OrderState, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
+import { AuthSessionService } from '../auth/auth-session.service';
+import { getAuthConfig } from '../auth/auth-config';
 import { PRISMA_CLIENT } from '../prisma/prisma.token';
 import {
   AdminDashboardModel,
@@ -45,10 +47,11 @@ import {
   ProductModel,
   TopDishModel,
 } from './admin.types';
-import { ShopModel } from '../shop/shop.types';
+import { CustomerThemeOverridesModel, ShopModel } from '../shop/shop.types';
 import {
   BannerStatusInput,
   ApproveShopApplicationInput,
+  CustomerThemeOverridesInput,
   CreateBannerInput,
   CreateShopApplicationInput,
   CreatePlatformCouponInput,
@@ -167,6 +170,7 @@ export class AdminService {
     private readonly eventProducer: PaymentEventProducer,
     private readonly realtimeService: RealtimeService,
     private readonly productService: ProductService,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
   platformScopes(role: string): string[] {
@@ -213,6 +217,41 @@ export class AdminService {
     return this.prisma.platformAdmin.findFirst({
       where: { id: adminId, status: PlatformAdminStatusModel.ACTIVE },
     });
+  }
+
+  async changePlatformPassword(
+    adminId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
+    this.assertStrongPassword(newPassword);
+    const admin = await this.prisma.platformAdmin.findFirst({
+      where: { id: adminId, status: PlatformAdminStatusModel.ACTIVE },
+    });
+    const hash =
+      typeof admin?.passwordHash === 'string' ? admin.passwordHash : '';
+    if (!admin || !(await bcrypt.compare(currentPassword, hash))) {
+      return false;
+    }
+    await this.prisma.platformAdmin.upsert({
+      where: { identifier: String(admin.identifier) },
+      update: {
+        passwordHash: await this.hashPassword(newPassword),
+      },
+      create: {
+        name: String(admin.name),
+        identifier: String(admin.identifier),
+        passwordHash: await this.hashPassword(newPassword),
+        role: admin.role as PlatformAdminRoleModel,
+        status: PlatformAdminStatusModel.ACTIVE,
+      },
+    });
+    await this.authSessions.revokeSubject(
+      'PLATFORM_ADMIN',
+      adminId,
+      'password_changed',
+    );
+    return true;
   }
 
   async platformDashboard(
@@ -452,6 +491,13 @@ export class AdminService {
       success: ok,
       reason: verification.reason,
     });
+    if (ok) {
+      await this.authSessions.revokeSubject(
+        'STAFF',
+        staffId,
+        'staff_password_reset',
+      );
+    }
     return {
       ok,
       temporaryPassword,
@@ -527,7 +573,20 @@ export class AdminService {
   }
 
   private async hashPassword(rawPassword: string): Promise<string> {
-    return bcrypt.hash(rawPassword, 10);
+    return bcrypt.hash(rawPassword, getAuthConfig().bcryptCost);
+  }
+
+  private assertStrongPassword(password: string): void {
+    const strong =
+      password.length >= 10 &&
+      /[a-z]/.test(password) &&
+      /[A-Z]/.test(password) &&
+      /\d/.test(password);
+    if (!strong) {
+      throw new BadRequestException(
+        'Password must be at least 10 characters and include upper, lower, and numeric characters',
+      );
+    }
   }
 
   private toStaffModel(row: Record<string, unknown>): StaffModel {
@@ -1146,6 +1205,14 @@ export class AdminService {
       throw new NotFoundException(`Shop not found: ${shopId}`);
     }
     const name = input.name !== undefined ? input.name.trim() : undefined;
+    const customerThemePreset =
+      input.customerThemePreset !== undefined
+        ? input.customerThemePreset.trim() || null
+        : undefined;
+    const customerThemeOverrides =
+      input.customerThemeOverrides !== undefined
+        ? this.normalizeCustomerThemeOverrides(input.customerThemeOverrides)
+        : undefined;
     if (name !== undefined && name === '') {
       throw new BadRequestException('name cannot be empty');
     }
@@ -1163,6 +1230,15 @@ export class AdminService {
           ? {
               logoUrl:
                 input.logoUrl.trim() === '' ? null : input.logoUrl.trim(),
+            }
+          : {}),
+        ...(customerThemePreset !== undefined ? { customerThemePreset } : {}),
+        ...(customerThemeOverrides !== undefined
+          ? {
+              customerThemeOverridesJson:
+                customerThemeOverrides === null
+                  ? null
+                  : JSON.stringify(customerThemeOverrides),
             }
           : {}),
         ...(input.isOpen !== undefined ? { active: input.isOpen } : {}),
@@ -1183,8 +1259,51 @@ export class AdminService {
       contactPhone:
         typeof row.contactPhone === 'string' ? row.contactPhone : undefined,
       logoUrl: typeof row.logoUrl === 'string' ? row.logoUrl : undefined,
+      customerThemePreset:
+        typeof row.customerThemePreset === 'string'
+          ? row.customerThemePreset
+          : undefined,
+      customerThemeOverrides: this.parseCustomerThemeOverrides(
+        row.customerThemeOverridesJson,
+      ),
       active: Boolean(row.active),
     };
+  }
+
+  private normalizeCustomerThemeOverrides(
+    input: CustomerThemeOverridesInput,
+  ): CustomerThemeOverridesModel | null {
+    const entries = Object.entries(input).flatMap(([key, value]) => {
+      if (typeof value !== 'string') return [];
+      const trimmed = value.trim();
+      return trimmed ? [[key, trimmed] as const] : [];
+    });
+    if (!entries.length) {
+      return null;
+    }
+    return Object.fromEntries(entries) as CustomerThemeOverridesModel;
+  }
+
+  private parseCustomerThemeOverrides(
+    raw: unknown,
+  ): CustomerThemeOverridesModel | undefined {
+    if (typeof raw !== 'string' || raw.trim() === '') {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const entries = Object.entries(parsed).flatMap(([key, value]) => {
+        if (typeof value !== 'string') return [];
+        const trimmed = value.trim();
+        return trimmed ? [[key, trimmed] as const] : [];
+      });
+      if (!entries.length) {
+        return undefined;
+      }
+      return Object.fromEntries(entries) as CustomerThemeOverridesModel;
+    } catch {
+      return undefined;
+    }
   }
 
   private composeScopeType(

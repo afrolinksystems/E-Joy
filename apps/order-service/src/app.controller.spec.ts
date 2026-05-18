@@ -1,29 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { OrderService } from './order/order.service';
 
-describe('AppController', () => {
-  let appController: AppController;
+describe('AppController health', () => {
+  it('returns a simple health payload', () => {
+    const controller = new AppController(
+      { getHello: () => 'Hello World!' } as never,
+      {} as never,
+      { dependencyHealth: jest.fn() } as never,
+    );
 
-  beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [
-        AppService,
-        {
-          provide: OrderService,
-          useValue: { applyMockPaymentSuccess: jest.fn() },
-        },
-      ],
-    }).compile();
-
-    appController = app.get<AppController>(AppController);
+    expect(controller.health()).toMatchObject({
+      ok: true,
+      service: 'order-service',
+    });
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('reports dependency health status', async () => {
+    const controller = new AppController(
+      { getHello: () => 'Hello World!' } as never,
+      {} as never,
+      {
+        dependencyHealth: jest
+          .fn()
+          .mockResolvedValue({ db: 'ok', redis: 'unknown', kafka: 'unknown' }),
+      } as never,
+    );
+
+    await expect(controller.dependencyHealth()).resolves.toMatchObject({
+      ok: true,
+      dependencies: { db: 'ok' },
     });
   });
 });

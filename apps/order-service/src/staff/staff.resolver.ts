@@ -4,15 +4,33 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
-import { JwtService } from '@nestjs/jwt';
+import {
+  Args,
+  Context,
+  Mutation,
+  Query,
+  Resolver,
+  Subscription,
+} from '@nestjs/graphql';
+import type { Response } from 'express';
+import { AuthSessionService } from '../auth/auth-session.service';
+import { AuthTokenService } from '../auth/auth-token.service';
+import {
+  clearRefreshCookie,
+  readCookie,
+  setRefreshCookie,
+} from '../auth/cookie.util';
+import { getAuthConfig } from '../auth/auth-config';
 import { CurrentUserId } from '../auth/current-user-id.decorator';
 import { CurrentUserRole } from '../auth/current-user-role.decorator';
 import { CurrentUserShopId } from '../auth/current-user-shop-id.decorator';
 import { CurrentUserScope } from '../auth/current-user-scope.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RateLimitService } from '../auth/rate-limit.service';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { AdminService } from '../admin/admin.service';
+import { AppLoggerService } from '../ops/app-logger.service';
 import { REALTIME_TOPICS, RealtimeService } from '../realtime/realtime.service';
 import { StaffService } from './staff.service';
 import {
@@ -29,6 +47,7 @@ import {
 import {
   AcceptServiceTicketInput,
   CallWaiterInput,
+  ChangePasswordInput,
   CreateStaffAccountInput,
   MarkStaffNotificationReadInput,
   ResolveServiceTicketInput,
@@ -42,8 +61,12 @@ import {
 export class StaffResolver {
   constructor(
     private readonly staffService: StaffService,
-    private readonly jwtService: JwtService,
     private readonly realtimeService: RealtimeService,
+    private readonly adminService: AdminService,
+    private readonly authSessions: AuthSessionService,
+    private readonly authTokens: AuthTokenService,
+    private readonly rateLimit: RateLimitService,
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   private assertRole(
@@ -261,26 +284,283 @@ export class StaffResolver {
   async staffLogin(
     @Args('phone') phone: string,
     @Args('password') password: string,
+    @Context()
+    ctx: {
+      req?: {
+        headers?: Record<string, string | string[] | undefined>;
+        ip?: string;
+      };
+      res?: Response;
+    },
   ): Promise<AuthPayloadModel> {
-    if (!phone.trim() || !password.trim()) {
-      throw new ForbiddenException('Phone and password are required');
+    const normalizedPhone = phone.trim();
+    this.rateLimit.consume({
+      key: `${this.rateLimit.getClientIp(ctx.req)}:${normalizedPhone}`,
+      label: 'staff_login',
+      limit: 5,
+      windowMs: 60_000,
+    });
+    if (!normalizedPhone || !password.trim()) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'STAFF',
+        identifier: normalizedPhone,
+        reason: 'missing_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
+      throw new UnauthorizedException('Invalid phone or password');
     }
-    const staff = await this.staffService.authenticateStaff(phone, password);
+    const staff = await this.staffService.authenticateStaff(
+      normalizedPhone,
+      password,
+    );
     if (!staff) {
+      this.appLogger.warn('auth.login.failed', {
+        subjectType: 'STAFF',
+        identifier: normalizedPhone,
+        reason: 'invalid_credentials',
+        ip: this.rateLimit.getClientIp(ctx.req),
+      });
       throw new UnauthorizedException('Invalid phone or password');
     }
     const role = String(staff.role);
     const scope = this.scopesForStaffRole(role);
     const jwtRole = this.jwtRoleForStaffRole(role);
     const shopId = String(staff.shopId);
-    const accessToken = this.jwtService.sign({
-      sub: String(staff.id),
+    const session = await this.authSessions.createSession({
+      subjectType: 'STAFF',
+      subjectId: String(staff.id),
+      userAgent: String(ctx.req?.headers?.['user-agent'] ?? ''),
+      ip: this.rateLimit.getClientIp(ctx.req),
+    });
+    const signed = this.authTokens.signAccessToken(
+      {
+        id: String(staff.id),
+        subjectType: 'STAFF',
+        role: jwtRole,
+        shopId,
+        scope,
+      },
+      session.sessionId,
+    );
+    setRefreshCookie(ctx.res, session.refreshToken);
+    this.appLogger.info('auth.login.success', {
+      subjectType: 'STAFF',
+      subjectId: String(staff.id),
+      shopId,
       role: jwtRole,
-      staffRole: role,
+    });
+    return {
+      accessToken: signed.accessToken,
+      expiresAt: signed.expiresAt,
+      role: jwtRole,
       shopId,
       scope,
+    };
+  }
+
+  @Mutation(() => AuthPayloadModel)
+  async refreshSession(
+    @Context()
+    ctx: {
+      req?: {
+        headers?: Record<string, string | string[] | undefined>;
+        ip?: string;
+      };
+      res?: Response;
+    },
+  ): Promise<AuthPayloadModel> {
+    const cfg = getAuthConfig();
+    const refreshToken = readCookie(ctx.req, cfg.refreshCookieName);
+    this.rateLimit.consume({
+      key: `${this.rateLimit.getClientIp(ctx.req)}:${refreshToken ?? 'none'}`,
+      label: 'refresh_session',
+      limit: 20,
+      windowMs: 60_000,
     });
-    return { accessToken, role: jwtRole, shopId, scope };
+    if (!refreshToken) {
+      this.appLogger.warn('auth.refresh.failed', { reason: 'missing_cookie' });
+      throw new UnauthorizedException('Login required');
+    }
+    let rotated: Awaited<ReturnType<AuthSessionService['rotateRefreshToken']>>;
+    try {
+      rotated = await this.authSessions.rotateRefreshToken(refreshToken);
+    } catch (err) {
+      this.appLogger.warn('auth.refresh.failed', {
+        reason: err instanceof Error ? err.message : 'invalid_refresh',
+      });
+      throw err;
+    }
+    if (rotated.session.subjectType === 'STAFF') {
+      const staff = await this.staffService.staffActor(
+        rotated.session.subjectId,
+      );
+      if (!staff) {
+        await this.authSessions.revokeSession(
+          rotated.session.id,
+          'staff_inactive',
+        );
+        this.appLogger.warn('auth.refresh.failed', {
+          subjectType: 'STAFF',
+          subjectId: rotated.session.subjectId,
+          reason: 'staff_inactive',
+        });
+        throw new UnauthorizedException('Session is no longer valid');
+      }
+      const role = String(staff.role);
+      const jwtRole = this.jwtRoleForStaffRole(role);
+      const signed = this.authTokens.signAccessToken(
+        {
+          id: String(staff.id),
+          subjectType: 'STAFF',
+          role: jwtRole,
+          shopId: String(staff.shopId),
+          scope: this.scopesForStaffRole(role),
+        },
+        rotated.session.id,
+      );
+      setRefreshCookie(ctx.res, rotated.refreshToken);
+      this.appLogger.info('auth.refresh.success', {
+        subjectType: 'STAFF',
+        subjectId: String(staff.id),
+        shopId: String(staff.shopId),
+      });
+      return {
+        accessToken: signed.accessToken,
+        expiresAt: signed.expiresAt,
+        role: jwtRole,
+        shopId: String(staff.shopId),
+        scope: this.scopesForStaffRole(role),
+      };
+    }
+    const admin = await this.adminService.platformMe(rotated.session.subjectId);
+    if (!admin) {
+      await this.authSessions.revokeSession(
+        rotated.session.id,
+        'platform_admin_inactive',
+      );
+      this.appLogger.warn('auth.refresh.failed', {
+        subjectType: 'PLATFORM_ADMIN',
+        subjectId: rotated.session.subjectId,
+        reason: 'platform_admin_inactive',
+      });
+      throw new UnauthorizedException('Session is no longer valid');
+    }
+    const scope = this.adminService.platformScopes(String(admin.role));
+    const signed = this.authTokens.signAccessToken(
+      {
+        id: String(admin.id),
+        subjectType: 'PLATFORM_ADMIN',
+        role: 'platform_admin',
+        platformRole: String(admin.role),
+        scope,
+      },
+      rotated.session.id,
+    );
+    setRefreshCookie(ctx.res, rotated.refreshToken);
+    this.appLogger.info('auth.refresh.success', {
+      subjectType: 'PLATFORM_ADMIN',
+      subjectId: String(admin.id),
+      role: String(admin.role),
+    });
+    return {
+      accessToken: signed.accessToken,
+      expiresAt: signed.expiresAt,
+      role: 'platform_admin',
+      scope,
+    };
+  }
+
+  @Mutation(() => Boolean)
+  async logout(
+    @Context()
+    ctx: {
+      req?: { headers?: Record<string, string | string[] | undefined> };
+      res?: Response;
+    },
+  ): Promise<boolean> {
+    const cfg = getAuthConfig();
+    const refreshToken = readCookie(ctx.req, cfg.refreshCookieName);
+    const sessionId = refreshToken
+      ? this.authSessions.parseSessionId(refreshToken)
+      : undefined;
+    if (sessionId) {
+      await this.authSessions.revokeSession(sessionId, 'logout');
+    }
+    clearRefreshCookie(ctx.res);
+    this.appLogger.info('auth.logout', { sessionId: sessionId ?? 'unknown' });
+    return true;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Boolean)
+  async logoutAllSessions(
+    @CurrentUserId() userId?: string,
+    @Context()
+    ctx?: {
+      req?: {
+        user?: { subjectType?: 'STAFF' | 'PLATFORM_ADMIN' };
+      };
+      res?: Response;
+    },
+  ): Promise<boolean> {
+    if (userId && ctx?.req?.user?.subjectType) {
+      await this.authSessions.revokeSubject(
+        ctx.req.user.subjectType,
+        userId,
+        'logout_all',
+      );
+      this.appLogger.info('auth.logout_all', {
+        subjectType: ctx.req.user.subjectType,
+        subjectId: userId,
+      });
+    }
+    clearRefreshCookie(ctx?.res);
+    return true;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Mutation(() => Boolean)
+  async changePassword(
+    @Args('input') input: ChangePasswordInput,
+    @CurrentUserId() userId?: string,
+    @Context()
+    ctx?: {
+      req?: {
+        user?: { subjectType?: 'STAFF' | 'PLATFORM_ADMIN' };
+      };
+      res?: Response;
+    },
+  ): Promise<boolean> {
+    if (!userId || !ctx?.req?.user?.subjectType) {
+      throw new UnauthorizedException('Login required');
+    }
+    this.rateLimit.consume({
+      key: `${ctx.req.user.subjectType}:${userId}`,
+      label: 'change_password',
+      limit: 3,
+      windowMs: 10 * 60_000,
+    });
+    const ok =
+      ctx.req.user.subjectType === 'STAFF'
+        ? await this.staffService.changePassword(
+            userId,
+            input.currentPassword,
+            input.newPassword,
+          )
+        : await this.adminService.changePlatformPassword(
+            userId,
+            input.currentPassword,
+            input.newPassword,
+          );
+    clearRefreshCookie(ctx.res);
+    if (!ok) {
+      throw new UnauthorizedException('Invalid current password');
+    }
+    this.appLogger.info('auth.password_changed', {
+      subjectType: ctx.req.user.subjectType,
+      subjectId: userId,
+    });
+    return true;
   }
 
   @UseGuards(JwtAuthGuard)

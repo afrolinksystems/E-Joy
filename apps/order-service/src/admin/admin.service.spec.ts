@@ -59,12 +59,16 @@ describe('AdminService sensitive verification', () => {
     const productService = {
       listProducts: jest.fn().mockResolvedValue([]),
     };
+    const authSessions = {
+      revokeSubject: jest.fn().mockResolvedValue(undefined),
+    };
     return {
       service: new AdminService(
         prisma as never,
         eventProducer as never,
         realtime as never,
         productService as never,
+        authSessions as never,
       ),
       prisma,
     };
